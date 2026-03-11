@@ -1,4 +1,5 @@
-import { Monitor, Moon, Sun } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Download, Loader2, Monitor, Moon, Sun } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -8,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { isTauri, startBackgroundDownload } from '@/lib/aiClient'
+import { useAiStore } from '@/store/useAiStore'
 import { useTheme, type Theme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +27,38 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: React.ReactNode }[] = 
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [currentTheme, setCurrentTheme] = useTheme()
+  const [downloadState, setDownloadState] = useState<
+    'idle' | 'downloading' | 'success' | 'error'
+  >('idle')
+  const [downloadMessage, setDownloadMessage] = useState<string | null>(null)
+  const aiStatus = useAiStore((s) => s.status)
+  const lastDownloadOutcome = useAiStore((s) => s.lastDownloadOutcome)
+
+  const handleDownloadModel = async () => {
+    setDownloadState('downloading')
+    setDownloadMessage(null)
+    try {
+      const result = await startBackgroundDownload()
+      if (result === 'cached') {
+        setDownloadState('success')
+        setDownloadMessage('Model already downloaded.')
+      } else {
+        setDownloadMessage('Download started. Use the toast to pause or stop.')
+      }
+    } catch (e) {
+      setDownloadState('error')
+      setDownloadMessage(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  useEffect(() => {
+    if (downloadState === 'downloading' && aiStatus === 'idle' && lastDownloadOutcome) {
+      setDownloadState(lastDownloadOutcome === 'completed' ? 'success' : 'idle')
+      setDownloadMessage(
+        lastDownloadOutcome === 'completed' ? 'Model downloaded successfully.' : null,
+      )
+    }
+  }, [downloadState, aiStatus, lastDownloadOutcome])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,6 +97,44 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   : 'Light mode'}
             </p>
           </div>
+
+          {(useAiStore((s) => s.tauriDetected) || isTauri()) && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">AI Model</label>
+              <p className="text-xs text-muted-foreground">
+                Download Qwen2.5-Coder (~8.5GB) for offline AI insights and meeting
+                notes cleanup.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleDownloadModel}
+                disabled={aiStatus === 'downloading'}
+              >
+                {aiStatus === 'downloading' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                {aiStatus === 'downloading'
+                  ? 'Downloading…'
+                  : 'Download AI model'}
+              </Button>
+              {downloadMessage && (
+                <p
+                  className={cn(
+                    'text-xs',
+                    downloadState === 'error'
+                      ? 'text-destructive'
+                      : 'text-muted-foreground',
+                  )}
+                >
+                  {downloadMessage}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

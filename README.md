@@ -2,16 +2,29 @@
 
 Project management app with Gantt timeline, buckets, dependencies, meeting notes, and AI-powered insights.
 
+## Desktop App (Tauri)
+
+Build a standalone desktop app with **embedded AI** (model downloads on first run, ~8.5GB):
+
+```bash
+# Requires Rust: https://rustup.rs
+npm run tauri:dev    # Development
+npm run tauri:build  # Production build
+```
+
+The first AI request (Insights or "Clean up with AI" in meeting notes) will download Qwen2.5-Coder-14B-Q4_K_M from Hugging Face and cache it locally. Subsequent runs use the cached model.
+
 ## AI Insights
 
 The **Insights** tab uses a local AI model to analyze your project (tasks, dependencies, meeting notes) and surface risks, open points, next steps, and blind spots.
 
-**Setup (Ollama):**
+**In Tauri desktop app:** Uses embedded model (download-on-first-run). No setup needed.
 
-1. Install [Ollama](https://ollama.com)
-2. Pull a model: `ollama pull qwen2.5:7b`
-3. Run `ollama serve` (or start Ollama app)
-4. Open a project → Insights tab → **Analyze**
+**In browser (Ollama / LM Studio):**
+
+1. Install [Ollama](https://ollama.com) or [LM Studio](https://lmstudio.ai)
+2. Load a model (e.g. Qwen2.5-Coder-14B)
+3. Open a project → Insights tab → **Analyze**
 
 You can swap models via the settings (gear) button. Works with any OpenAI-compatible API (Ollama, LM Studio, etc.).
 

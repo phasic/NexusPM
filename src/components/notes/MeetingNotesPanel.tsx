@@ -26,9 +26,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { RichTextEditor } from '@/components/notes/RichTextEditor'
 import type { Bucket, MeetingNote, Task } from '@/domain/types'
-import { cleanMeetingNotes, getModelConfig } from '@/lib/aiClient'
+import { cleanMeetingNotes, getModelConfig, isTauri } from '@/lib/aiClient'
 import { htmlToPlainText, markdownToHtml } from '@/lib/richTextUtils'
 import { cn } from '@/lib/utils'
+import { useAiStore } from '@/store/useAiStore'
 import { useAppStore } from '@/store/useAppStore'
 
 function AddPillSelect({
@@ -430,6 +431,8 @@ function NoteEditor({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [cleanupLoading, setCleanupLoading] = useState(false)
   const [cleanupError, setCleanupError] = useState<string | null>(null)
+  const aiStatus = useAiStore((s) => s.status)
+  const setAiStatus = useAiStore((s) => s.setStatus)
 
   useEffect(() => {
     setTitle(note.title)
@@ -477,6 +480,7 @@ function NoteEditor({
       setCleanupError(e instanceof Error ? e.message : String(e))
     } finally {
       setCleanupLoading(false)
+      setAiStatus('idle')
     }
   }
 
@@ -634,7 +638,13 @@ function NoteEditor({
             title="Clean up notes with AI (takeaways, next steps, PTAs, timelines)"
           >
             <Sparkles className={cn('h-3.5 w-3.5', cleanupLoading && 'animate-pulse')} />
-            {cleanupLoading ? 'Cleaning…' : 'Clean up with AI'}
+            {cleanupLoading
+              ? isTauri() && aiStatus === 'downloading'
+                ? 'Downloading model…'
+                : isTauri() && aiStatus === 'loading'
+                  ? 'Loading model…'
+                  : 'Cleaning…'
+              : 'Clean up with AI'}
           </Button>
         </div>
         {cleanupError && (

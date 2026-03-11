@@ -31,10 +31,12 @@ import { Input } from '@/components/ui/input'
 import {
   chatCompletion,
   getModelConfig,
+  isTauri,
   setModelConfig,
   testConnection,
   type AIModelConfig,
 } from '@/lib/aiClient'
+import { useAiStore } from '@/store/useAiStore'
 import type { Task } from '@/domain/types'
 import { useAppStore } from '@/store/useAppStore'
 import { buildProjectContextText, type ProjectContext } from '@/lib/insightsContext'
@@ -79,6 +81,8 @@ export function InsightsPanel({
   const [config, setConfig] = useState<AIModelConfig>(getModelConfig)
   const [testStatus, setTestStatus] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Set<number>>(() => new Set())
+  const aiStatus = useAiStore((s) => s.status)
+  const setAiStatus = useAiStore((s) => s.setStatus)
 
   useEffect(() => {
     if (insights) setExpandedSections(new Set())
@@ -101,6 +105,7 @@ export function InsightsPanel({
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
+      setAiStatus('idle')
     }
   }
 
@@ -286,7 +291,11 @@ export function InsightsPanel({
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing…
+                  {isTauri() && aiStatus === 'downloading'
+                    ? 'Downloading model (~8.5GB)…'
+                    : isTauri() && aiStatus === 'loading'
+                      ? 'Loading model…'
+                      : 'Analyzing…'}
                 </>
               ) : (
                 <>
@@ -301,6 +310,13 @@ export function InsightsPanel({
           Uses a local AI model to analyze tasks, dependencies, and meeting notes across risks,
           blind spots, critical path, timeline confidence, and more.
         </p>
+        {loading && isTauri() && (aiStatus === 'downloading' || aiStatus === 'loading') && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+            {aiStatus === 'downloading'
+              ? 'Downloading AI model (~8.5GB). This may take several minutes on first run.'
+              : 'Loading model into memory…'}
+          </div>
+        )}
         {generatedAt && (
           <p className="text-xs text-muted-foreground">
             Last generated: {new Date(generatedAt).toLocaleString(undefined, {
@@ -402,11 +418,14 @@ export function InsightsPanel({
           <DialogHeader>
             <DialogTitle>AI model settings</DialogTitle>
             <DialogDescription>
-              Configure the local model endpoint. Works with Ollama, LM Studio, or any
-              OpenAI-compatible API.
+              {isTauri()
+                ? 'Using embedded Qwen2.5-Coder-14B. First use downloads the model (~8.5GB).'
+                : 'Configure the local model endpoint. Works with Ollama, LM Studio, or any OpenAI-compatible API.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {!isTauri() && (
+              <>
             <div className="space-y-2">
               <label className="text-sm font-medium">Base URL</label>
               <Input
@@ -432,6 +451,8 @@ export function InsightsPanel({
                 e.g. qwen2.5-coder-14b, qwen2.5:7b, llama3.2
               </p>
             </div>
+              </>
+            )}
             {testStatus && (
               <div
                 className={`rounded-lg px-3 py-2 text-sm ${
@@ -446,12 +467,18 @@ export function InsightsPanel({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleTestConnection}>
-              Test connection
+              {isTauri() ? 'Check status' : 'Test connection'}
             </Button>
-            <Button variant="secondary" onClick={() => setSettingsOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveSettings}>Save</Button>
+            {isTauri() ? (
+              <Button onClick={() => setSettingsOpen(false)}>Close</Button>
+            ) : (
+              <>
+                <Button variant="secondary" onClick={() => setSettingsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveSettings}>Save</Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
