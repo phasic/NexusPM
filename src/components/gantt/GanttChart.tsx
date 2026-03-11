@@ -52,6 +52,7 @@ export function GanttChart({
   onAddTask,
   onAddBucket,
   onBucketClick,
+  isActive,
 }: {
   projectId: ID
   uncategorizedOrder?: number
@@ -68,6 +69,8 @@ export function GanttChart({
   onAddTask?: () => void
   onAddBucket?: () => void
   onBucketClick?: (bucket: Bucket) => void
+  /** When true and transitioning from false, centers the timeline on today. Use when tab becomes active. */
+  isActive?: boolean
 }) {
   const ZOOM_LEVELS = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48] as const
   const [zoomIndex, setZoomIndex] = useState(8)
@@ -91,6 +94,7 @@ export function GanttChart({
   const extendThreshold = 150
   const isExtendingRef = useRef(false)
   const centerDateOnZoomRef = useRef<Date | null>(null)
+  const isCenteringOnTodayRef = useRef(false)
 
   const { rows, taskToRowIndex } = useMemo(() => {
     const sortedBuckets = buckets.slice().sort((a, b) => a.order - b.order)
@@ -201,6 +205,42 @@ export function GanttChart({
       Math.min(centerX - el.clientWidth / 2, 260 + totalWidth - el.clientWidth),
     )
   }, [zoomIndex, start, days.length, dayWidth, totalWidth])
+
+  const prevActiveRef = useRef(isActive ?? false)
+  useEffect(() => {
+    const wasActive = prevActiveRef.current
+    const nowActive = isActive ?? false
+    prevActiveRef.current = nowActive
+    if (nowActive && !wasActive) {
+      isCenteringOnTodayRef.current = true
+      const scrollToCenterToday = () => {
+        const el = scrollRef.current
+        if (!el || el.clientWidth === 0) return false
+        const daysFromStart = differenceInCalendarDays(today, start)
+        const dayIndex = Math.max(0, Math.min(daysFromStart, days.length - 1))
+        const centerX = 260 + dayIndex * dayWidth + dayWidth / 2
+        el.scrollLeft = Math.max(
+          0,
+          Math.min(centerX - el.clientWidth / 2, 260 + totalWidth - el.clientWidth),
+        )
+        return true
+      }
+      const tryScroll = (attempt = 0) => {
+        if (scrollToCenterToday()) {
+          requestAnimationFrame(() => {
+            isCenteringOnTodayRef.current = false
+          })
+          return
+        }
+        if (attempt < 20) {
+          setTimeout(() => tryScroll(attempt + 1), 50)
+        } else {
+          isCenteringOnTodayRef.current = false
+        }
+      }
+      requestAnimationFrame(() => requestAnimationFrame(() => tryScroll()))
+    }
+  }, [isActive, today, start, days.length, dayWidth, totalWidth])
 
   const getDateAtViewportCenter = () => {
     const el = scrollRef.current
@@ -538,7 +578,7 @@ export function GanttChart({
 
   const handleScroll = () => {
     const el = scrollRef.current
-    if (!el || isExtendingRef.current) return
+    if (!el || isExtendingRef.current || isCenteringOnTodayRef.current) return
     const { scrollLeft, clientWidth, scrollWidth } = el
     if (scrollLeft < extendThreshold) {
       isExtendingRef.current = true

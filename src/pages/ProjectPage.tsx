@@ -150,10 +150,11 @@ export function ProjectPage() {
           <TabsTrigger value="insights">Insights</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="timeline">
+        <TabsContent value="timeline" forceMount className="data-[state=inactive]:hidden">
           <div className="space-y-3">
                 <GanttChart
                     projectId={projectId}
+                    isActive={activeTab === 'timeline'}
                     uncategorizedOrder={project.uncategorizedOrder}
                     tasks={orderedTasks}
                     taskById={taskById}
