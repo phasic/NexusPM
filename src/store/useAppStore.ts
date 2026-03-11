@@ -59,6 +59,7 @@ type AppState = AppData & {
   getBlockingDependencies: (taskId: ID) => Task[]
 
   projectInsights: Record<ID, string | null>
+  projectInsightsGeneratedAt: Record<ID, string>
   setProjectInsights: (projectId: ID, insights: string | null) => void
 }
 
@@ -471,18 +472,24 @@ export const useAppStore = create<AppState>()(
       },
 
       projectInsights: {},
+      projectInsightsGeneratedAt: {},
       setProjectInsights: (projectId, insights) => {
+        const now = new Date().toISOString()
         set((s) => ({
           projectInsights: {
             ...s.projectInsights,
             [projectId]: insights,
+          },
+          projectInsightsGeneratedAt: {
+            ...s.projectInsightsGeneratedAt,
+            [projectId]: insights ? now : '',
           },
         }))
       },
     }),
     {
       name: STORAGE_KEY,
-      version: 7,
+      version: 8,
       partialize: (s) => ({
         projects: s.projects,
         buckets: s.buckets,
@@ -490,9 +497,12 @@ export const useAppStore = create<AppState>()(
         notebooks: s.notebooks ?? {},
         meetingNotes: s.meetingNotes,
         projectInsights: s.projectInsights,
+        projectInsightsGeneratedAt: s.projectInsightsGeneratedAt,
       }),
       migrate: (persisted, version) => {
-        const p = persisted as Partial<AppData & { projectInsights?: Record<string, string | null> }>
+        const p = persisted as Partial<
+          AppData & { projectInsights?: Record<string, string | null>; projectInsightsGeneratedAt?: Record<string, string> }
+        >
         if (version < 2 && !p.buckets) {
           return { ...p, buckets: {} }
         }
@@ -553,7 +563,13 @@ export const useAppStore = create<AppState>()(
           }
           return { ...p, notebooks, meetingNotes } as AppData & { projectInsights: Record<string, string | null> }
         }
-        return persisted as AppData & { projectInsights: Record<string, string | null> }
+        if (!(p as { projectInsightsGeneratedAt?: unknown }).projectInsightsGeneratedAt) {
+          return { ...p, projectInsightsGeneratedAt: {} }
+        }
+        return persisted as AppData & {
+          projectInsights: Record<string, string | null>
+          projectInsightsGeneratedAt: Record<string, string>
+        }
       },
     },
   ),

@@ -1,6 +1,6 @@
 import { parseISO } from 'date-fns'
 
-import type { Bucket, MeetingNote, Project, Task } from '@/domain/types'
+import type { Bucket, MeetingNote, Notebook, Project, Task } from '@/domain/types'
 
 export type ProjectContext = {
   project: Project
@@ -9,6 +9,7 @@ export type ProjectContext = {
   notes: MeetingNote[]
   taskById: Record<string, Task>
   bucketById: Record<string, Bucket>
+  notebookById?: Record<string, Notebook>
 }
 
 /**
@@ -110,28 +111,45 @@ export function buildProjectContextText(ctx: ProjectContext): string {
   }
   lines.push('')
 
-  lines.push('## Meeting notes')
+  lines.push('## Notebook entries')
   if (ctx.notes.length === 0) {
     lines.push('(No notes)')
   } else {
     for (const n of ctx.notes) {
-      const linkedTasks = n.linkedTaskIds
+      const linkedTaskTitles = (n.linkedTaskIds ?? [])
         .map((id) => ctx.taskById[id]?.title ?? id)
-        .join(', ')
-      const linkedBuckets = (n.linkedBucketIds ?? [])
+        .filter(Boolean)
+      const linkedBucketNames = (n.linkedBucketIds ?? [])
         .map((id) => ctx.bucketById[id]?.name ?? id)
-        .join(', ')
-      const dateStr = new Date(n.createdAt).toLocaleDateString(undefined, {
+        .filter(Boolean)
+      const linkedTasks = linkedTaskTitles.join(', ')
+      const notebookName = ctx.notebookById?.[n.notebookId]?.name
+      const meetingDate = new Date(n.createdAt).toLocaleDateString(undefined, {
+        weekday: 'short',
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       })
-      lines.push(`### ${n.title || dateStr}`)
-      if (n.peoplePresent) lines.push(`People present: ${n.peoplePresent}`)
-      if (n.preparation) lines.push(`Preparation: ${n.preparation}`)
-      lines.push(n.content)
-      if (linkedTasks) lines.push(`Linked tasks: ${linkedTasks}`)
-      if (linkedBuckets) lines.push(`Linked buckets: ${linkedBuckets}`)
+      const meetingTime = new Date(n.createdAt).toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+      lines.push(`### ${n.title || 'Untitled'}`)
+      lines.push(`- **When:** ${meetingDate} at ${meetingTime}`)
+      if (notebookName) lines.push(`- **Notebook:** ${notebookName}`)
+      if (n.peoplePresent) lines.push(`- **People present:** ${n.peoplePresent}`)
+      if (n.preparation) lines.push(`- **Preparation:** ${n.preparation}`)
+      if (linkedTaskTitles.length > 0) {
+        lines.push(`- **Linked tasks:** ${linkedTasks}`)
+      }
+      if (linkedBucketNames.length > 0) {
+        lines.push(`- **Linked buckets:** ${linkedBucketNames.join(', ')}`)
+      }
+      if (n.content) {
+        lines.push('')
+        lines.push('**Notes:**')
+        lines.push(n.content)
+      }
       lines.push('')
     }
   }

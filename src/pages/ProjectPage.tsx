@@ -3,7 +3,6 @@ import { Navigate, useParams } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -55,6 +54,7 @@ export function ProjectPage() {
   )
   const bucketById = allBuckets
   const taskById = allTasks
+  const notebookById = useAppStore((s) => s.notebooks ?? {})
   const moveTaskByDays = useAppStore((s) => s.moveTaskByDays)
   const reorderTasksInBucket = useAppStore((s) => s.reorderTasksInBucket)
   const reorderBuckets = useAppStore((s) => s.reorderBuckets)
@@ -146,17 +146,12 @@ export function ProjectPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="notes">Meeting notes</TabsTrigger>
+          <TabsTrigger value="notes">Notebook</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
         </TabsList>
 
         <TabsContent value="timeline">
-          <Card>
-            <CardHeader>
-              <CardTitle>Timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+          <div className="space-y-4">
                 <GanttChart
                     projectId={projectId}
                     uncategorizedOrder={project.uncategorizedOrder}
@@ -255,9 +250,7 @@ export function ProjectPage() {
                       )}
                     </div>
                   )}
-              </div>
-            </CardContent>
-          </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="insights">
@@ -270,6 +263,7 @@ export function ProjectPage() {
               notes,
               taskById,
               bucketById,
+              notebookById,
             }}
             onTaskClick={(task) => {
               setSelectedTask(task)
@@ -287,12 +281,7 @@ export function ProjectPage() {
         </TabsContent>
 
         <TabsContent value="notes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Meeting notes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MeetingNotesPanel
+          <MeetingNotesPanel
                 projectId={projectId}
                 tasks={orderedTasks}
                 buckets={buckets}
@@ -302,8 +291,6 @@ export function ProjectPage() {
                 onSelectNote={setSelectedNoteId}
                 onSelectNotebook={setSelectedNotebookId}
               />
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -69,8 +69,10 @@ export function InsightsPanel({
   onNoteClick?: (noteId: string) => void
 }) {
   const projectInsights = useAppStore((s) => s.projectInsights)
+  const projectInsightsGeneratedAt = useAppStore((s) => s.projectInsightsGeneratedAt)
   const setProjectInsights = useAppStore((s) => s.setProjectInsights)
   const insights = projectId ? (projectInsights[projectId] ?? null) : null
+  const generatedAt = projectId ? (projectInsightsGeneratedAt[projectId] ?? null) : null
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -299,6 +301,14 @@ export function InsightsPanel({
           Uses a local AI model to analyze tasks, dependencies, and meeting notes across risks,
           blind spots, critical path, timeline confidence, and more.
         </p>
+        {generatedAt && (
+          <p className="text-xs text-muted-foreground">
+            Last generated: {new Date(generatedAt).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         {error && (

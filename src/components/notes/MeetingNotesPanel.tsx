@@ -315,7 +315,7 @@ export function MeetingNotesPanel({
               <PanelRight className="h-4 w-4" />
             </Button>
             {selectedNotebook && (
-              <span className="text-[10px] text-muted-foreground -rotate-90 whitespace-nowrap">
+              <span className="mt-4 text-[10px] text-muted-foreground -rotate-90 whitespace-nowrap">
                 {selectedNotebook.name}
               </span>
             )}

@@ -56,9 +56,9 @@ export function formatInlineMarkdown(text: string): React.ReactNode[] {
 }
 
 /**
- * Replaces [taskName] and {noteName} patterns in text with clickable elements.
+ * Replaces [taskName], {noteName}, and **taskName** (bold) patterns in text with clickable elements.
  * Renders **bold** and *italic* in plain text segments.
- * Only bracketed formats are linked; plain task names are not.
+ * Bold text that matches a known task title is also linked (e.g. overdue tasks in insights).
  */
 export function linkifyInsightText(
   text: string,
@@ -85,7 +85,7 @@ export function linkifyInsightText(
     }
   }
 
-  const makeLink = (label: string, onClick: () => void) => (
+  const makeLink = (label: string, onClick: () => void, bold?: boolean) => (
     <button
       type="button"
       onClick={(e) => {
@@ -93,7 +93,7 @@ export function linkifyInsightText(
         e.stopPropagation()
         onClick()
       }}
-      className="mx-0.5 inline-flex cursor-pointer items-baseline rounded px-0.5 font-medium text-primary underline-offset-2 hover:underline"
+      className={`mx-0.5 inline-flex cursor-pointer items-baseline rounded px-0.5 font-medium text-primary underline-offset-2 hover:underline ${bold ? 'font-bold' : ''}`}
     >
       {label}
     </button>
@@ -101,14 +101,17 @@ export function linkifyInsightText(
 
   const taskBracketRe = /\[([^\]]+)\]/g
   const noteBracketRe = /\{([^}]+)\}/g
+  const boldRe = /\*\*(.+?)\*\*/g
 
   while (remaining.length > 0) {
     taskBracketRe.lastIndex = 0
     noteBracketRe.lastIndex = 0
+    boldRe.lastIndex = 0
 
     let earliest = remaining.length
     let match:
       | { type: 'task'; task: Task; label: string; start: number; end: number }
+      | { type: 'taskBold'; task: Task; label: string; start: number; end: number }
       | { type: 'note'; noteId: string; label: string; start: number; end: number }
       | { type: 'plain'; start: number; end: number; raw: string }
       | null = null
@@ -137,6 +140,18 @@ export function linkifyInsightText(
       }
     }
 
+    const boldM = boldRe.exec(remaining)
+    if (boldM && boldM.index < earliest) {
+      const task = taskByTitle.get(boldM[1].trim())
+      if (task) {
+        earliest = boldM.index
+        match = { type: 'taskBold', task, label: boldM[1].trim(), start: boldM.index, end: boldM.index + boldM[0].length }
+      } else {
+        earliest = boldM.index
+        match = { type: 'plain', start: boldM.index, end: boldM.index + boldM[0].length, raw: boldM[0] }
+      }
+    }
+
     if (!match) {
       result.push(...formatInlineMarkdown(remaining))
       break
@@ -149,6 +164,9 @@ export function linkifyInsightText(
     if (match.type === 'task') {
       const { task } = match
       result.push(makeLink(task.title, () => onTaskClick(task)))
+    } else if (match.type === 'taskBold') {
+      const { task } = match
+      result.push(makeLink(task.title, () => onTaskClick(task), true))
     } else if (match.type === 'note') {
       const { noteId, label } = match
       result.push(makeLink(label, () => onNoteClick(noteId)))
