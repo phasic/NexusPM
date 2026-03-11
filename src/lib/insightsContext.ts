@@ -115,17 +115,23 @@ export function buildProjectContextText(ctx: ProjectContext): string {
     lines.push('(No notes)')
   } else {
     for (const n of ctx.notes) {
-      const linked = n.linkedTaskIds
+      const linkedTasks = n.linkedTaskIds
         .map((id) => ctx.taskById[id]?.title ?? id)
+        .join(', ')
+      const linkedBuckets = (n.linkedBucketIds ?? [])
+        .map((id) => ctx.bucketById[id]?.name ?? id)
         .join(', ')
       const dateStr = new Date(n.createdAt).toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       })
-      lines.push(`### ${dateStr}`)
+      lines.push(`### ${n.title || dateStr}`)
+      if (n.peoplePresent) lines.push(`People present: ${n.peoplePresent}`)
+      if (n.preparation) lines.push(`Preparation: ${n.preparation}`)
       lines.push(n.content)
-      if (linked) lines.push(`Linked tasks: ${linked}`)
+      if (linkedTasks) lines.push(`Linked tasks: ${linkedTasks}`)
+      if (linkedBuckets) lines.push(`Linked buckets: ${linkedBuckets}`)
       lines.push('')
     }
   }

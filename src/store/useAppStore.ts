@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-import type { AppData, Bucket, ID, MeetingNote, Project, Task, TaskStatus } from '@/domain/types'
+import type { AppData, Bucket, ID, MeetingNote, Notebook, Project, Task, TaskStatus } from '@/domain/types'
 import { createSeedData } from '@/store/seed'
 
 type AppState = AppData & {
@@ -34,8 +34,18 @@ type AppState = AppData & {
   reorderBuckets: (projectId: ID, orderedBucketIds: ID[]) => void
   setTaskBucket: (taskId: ID, bucketId: ID | null) => void
 
-  addMeetingNote: (input: Pick<MeetingNote, 'projectId' | 'content'> & { linkedTaskIds?: ID[] }) => ID
-  updateMeetingNote: (id: ID, patch: Partial<Pick<MeetingNote, 'content' | 'linkedTaskIds'>>) => void
+  createNotebook: (input: Pick<Notebook, 'projectId' | 'name'>) => ID
+  updateNotebook: (id: ID, patch: Partial<Pick<Notebook, 'name' | 'order'>>) => void
+  deleteNotebook: (id: ID) => void
+
+  addMeetingNote: (input: Pick<MeetingNote, 'projectId' | 'notebookId' | 'title' | 'content'> & {
+    linkedTaskIds?: ID[]
+    linkedBucketIds?: ID[]
+    peoplePresent?: string
+    preparation?: string
+  }) => ID
+  updateMeetingNote: (id: ID, patch: Partial<Omit<MeetingNote, 'id' | 'projectId' | 'createdAt'>>) => void
+  deleteMeetingNote: (id: ID) => void
 
   replaceAll: (data: AppData) => void
   exportJson: () => string
@@ -43,6 +53,8 @@ type AppState = AppData & {
 
   getProjectTasks: (projectId: ID) => Task[]
   getProjectNotes: (projectId: ID) => MeetingNote[]
+  getProjectNotebooks: (projectId: ID) => Notebook[]
+  getNotebookNotes: (notebookId: ID) => MeetingNote[]
   isTaskBlocked: (taskId: ID) => boolean
   getBlockingDependencies: (taskId: ID) => Task[]
 
@@ -262,17 +274,25 @@ export const useAppStore = create<AppState>()(
             const meetingNotes = { ...s.meetingNotes }
             for (const nid of Object.keys(meetingNotes)) {
               const note = meetingNotes[nid]
-              const stillLinked = note.linkedTaskIds.filter((l) => !taskIdsInBucket.includes(l))
-              if (stillLinked.length !== note.linkedTaskIds.length) {
-                meetingNotes[nid] = { ...note, linkedTaskIds: stillLinked }
+              const stillLinkedTasks = note.linkedTaskIds.filter((l) => !taskIdsInBucket.includes(l))
+              const stillLinkedBuckets = (note.linkedBucketIds ?? []).filter((b) => b !== id)
+              if (stillLinkedTasks.length !== note.linkedTaskIds.length || stillLinkedBuckets.length !== (note.linkedBucketIds ?? []).length) {
+                meetingNotes[nid] = { ...note, linkedTaskIds: stillLinkedTasks, linkedBucketIds: stillLinkedBuckets }
               }
             }
             return { buckets: restBuckets, tasks, meetingNotes }
           }
+          const meetingNotes = { ...s.meetingNotes }
+          for (const nid of Object.keys(meetingNotes)) {
+            const note = meetingNotes[nid]
+            if ((note.linkedBucketIds ?? []).includes(id)) {
+              meetingNotes[nid] = { ...note, linkedBucketIds: note.linkedBucketIds!.filter((b) => b !== id) }
+            }
+          }
           for (const tid of taskIdsInBucket) {
             tasks[tid] = { ...tasks[tid], bucketId: undefined }
           }
-          return { buckets: restBuckets, tasks }
+          return { buckets: restBuckets, tasks, meetingNotes }
         })
       },
 
@@ -317,14 +337,51 @@ export const useAppStore = create<AppState>()(
         })
       },
 
-      addMeetingNote: ({ projectId, content, linkedTaskIds }) => {
+      createNotebook: ({ projectId, name }) => {
         const id = nanoid()
+        const existing = Object.values(get().notebooks ?? {}).filter((n) => n.projectId === projectId)
+        const order = existing.length > 0 ? Math.max(...existing.map((n) => n.order)) + 1 : 0
+        const nb: Notebook = { id, projectId, name, order }
+        set((s) => ({ notebooks: { ...(s.notebooks ?? {}), [id]: nb } }))
+        return id
+      },
+
+      updateNotebook: (id, patch) => {
+        set((s) => {
+          const current = s.notebooks?.[id]
+          if (!current) return s
+          return { notebooks: { ...(s.notebooks ?? {}), [id]: { ...current, ...patch } } }
+        })
+      },
+
+      deleteNotebook: (id) => {
+        set((s) => {
+          const { [id]: _, ...restNotebooks } = s.notebooks ?? {}
+          const meetingNotes = { ...s.meetingNotes }
+          for (const nid of Object.keys(meetingNotes)) {
+            if (meetingNotes[nid].notebookId === id) {
+              delete meetingNotes[nid]
+            }
+          }
+          return { notebooks: restNotebooks, meetingNotes }
+        })
+      },
+
+      addMeetingNote: ({ projectId, notebookId, title, content, linkedTaskIds, linkedBucketIds, peoplePresent, preparation }) => {
+        const id = nanoid()
+        const now = new Date().toISOString()
         const note: MeetingNote = {
           id,
           projectId,
+          notebookId,
+          title,
           content,
-          createdAt: new Date().toISOString(),
+          createdAt: now,
+          updatedAt: now,
           linkedTaskIds: linkedTaskIds ?? [],
+          linkedBucketIds: linkedBucketIds ?? [],
+          ...(peoplePresent && { peoplePresent }),
+          ...(preparation && { preparation }),
         }
         set((s) => ({ meetingNotes: { ...s.meetingNotes, [id]: note } }))
         return id
@@ -334,9 +391,18 @@ export const useAppStore = create<AppState>()(
         set((s) => {
           const current = s.meetingNotes[id]
           if (!current) return s
-          return {
-            meetingNotes: { ...s.meetingNotes, [id]: { ...current, ...patch } },
+          const next = { ...current, ...patch }
+          if (Object.keys(patch).some((k) => ['content', 'title', 'peoplePresent', 'preparation', 'linkedTaskIds', 'linkedBucketIds'].includes(k))) {
+            next.updatedAt = new Date().toISOString()
           }
+          return { meetingNotes: { ...s.meetingNotes, [id]: next } }
+        })
+      },
+
+      deleteMeetingNote: (id) => {
+        set((s) => {
+          const { [id]: _, ...rest } = s.meetingNotes
+          return { meetingNotes: rest }
         })
       },
 
@@ -346,12 +412,13 @@ export const useAppStore = create<AppState>()(
           projects: data.projects,
           buckets: data.buckets ?? {},
           tasks: data.tasks,
+          notebooks: data.notebooks ?? {},
           meetingNotes: data.meetingNotes,
         })),
 
       exportJson: () => {
-        const { projects, buckets, tasks, meetingNotes } = get()
-        return JSON.stringify({ projects, buckets, tasks, meetingNotes } satisfies AppData, null, 2)
+        const { projects, buckets, tasks, notebooks, meetingNotes } = get()
+        return JSON.stringify({ projects, buckets, tasks, notebooks: notebooks ?? {}, meetingNotes } satisfies AppData, null, 2)
       },
 
       importJson: (json) => {
@@ -363,6 +430,7 @@ export const useAppStore = create<AppState>()(
           projects: data.projects,
           buckets: data.buckets ?? {},
           tasks: data.tasks,
+          notebooks: data.notebooks ?? {},
           meetingNotes: data.meetingNotes,
         })
       },
@@ -373,7 +441,17 @@ export const useAppStore = create<AppState>()(
       getProjectNotes: (projectId) =>
         Object.values(get().meetingNotes)
           .filter((n) => n.projectId === projectId)
-          .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+          .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1)),
+
+      getProjectNotebooks: (projectId) =>
+        Object.values(get().notebooks ?? {})
+          .filter((n) => n.projectId === projectId)
+          .sort((a, b) => a.order - b.order),
+
+      getNotebookNotes: (notebookId) =>
+        Object.values(get().meetingNotes)
+          .filter((n) => n.notebookId === notebookId)
+          .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1)),
 
       isTaskBlocked: (taskId) => {
         const t = get().tasks[taskId]
@@ -404,11 +482,12 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 6,
+      version: 7,
       partialize: (s) => ({
         projects: s.projects,
         buckets: s.buckets,
         tasks: s.tasks,
+        notebooks: s.notebooks ?? {},
         meetingNotes: s.meetingNotes,
         projectInsights: s.projectInsights,
       }),
@@ -446,6 +525,33 @@ export const useAppStore = create<AppState>()(
         }
         if (version < 6) {
           return persisted as AppData & { projectInsights: Record<string, string | null> }
+        }
+        if (version < 7 && p.meetingNotes) {
+          const notebooks: Record<string, { id: string; projectId: string; name: string; order: number }> = {}
+          const meetingNotes: Record<string, MeetingNote> = {}
+          const projectToNotebook = new Map<string, string>()
+          for (const n of Object.values(p.meetingNotes)) {
+            const oldNote = n as { id: string; projectId: string; content: string; createdAt: string; linkedTaskIds?: string[] }
+            let notebookId = projectToNotebook.get(oldNote.projectId)
+            if (!notebookId) {
+              notebookId = nanoid()
+              projectToNotebook.set(oldNote.projectId, notebookId)
+              notebooks[notebookId] = { id: notebookId, projectId: oldNote.projectId, name: 'Meeting notes', order: 0 }
+            }
+            const firstLine = oldNote.content.split('\n')[0]?.trim()
+            meetingNotes[oldNote.id] = {
+              id: oldNote.id,
+              projectId: oldNote.projectId,
+              notebookId,
+              title: firstLine || 'Untitled',
+              content: oldNote.content,
+              createdAt: oldNote.createdAt,
+              updatedAt: oldNote.createdAt,
+              linkedTaskIds: oldNote.linkedTaskIds ?? [],
+              linkedBucketIds: [],
+            }
+          }
+          return { ...p, notebooks, meetingNotes } as AppData & { projectInsights: Record<string, string | null> }
         }
         return persisted as AppData & { projectInsights: Record<string, string | null> }
       },

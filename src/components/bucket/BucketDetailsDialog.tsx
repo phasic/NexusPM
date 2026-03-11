@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { Bucket, Task, TaskStatus } from '@/domain/types'
+import type { Bucket, MeetingNote, Task, TaskStatus } from '@/domain/types'
 import { cn } from '@/lib/utils'
 
 export function BucketDetailsDialog({
@@ -34,6 +34,8 @@ export function BucketDetailsDialog({
   onTaskClick,
   onUpdateTask,
   variant = 'dialog',
+  linkedNotes,
+  onNoteClick,
 }: {
   bucket: Bucket | null
   tasks: Task[]
@@ -44,6 +46,8 @@ export function BucketDetailsDialog({
   onTaskClick?: (task: Task) => void
   onUpdateTask?: (taskId: string, patch: Partial<Task>) => void
   variant?: 'dialog' | 'panel'
+  linkedNotes?: MeetingNote[]
+  onNoteClick?: (noteId: string) => void
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -179,6 +183,30 @@ export function BucketDetailsDialog({
                 </div>
               )}
             </div>
+
+            {linkedNotes && linkedNotes.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Linked meeting notes</label>
+                <div className="space-y-1">
+                  {linkedNotes.map((note) => (
+                    <button
+                      key={note.id}
+                      type="button"
+                      onClick={() => {
+                        onNoteClick?.(note.id)
+                        if (variant === 'dialog') onOpenChange(false)
+                      }}
+                      className="flex w-full items-center justify-between rounded-md bg-muted/60 px-3 py-2 text-left text-sm hover:bg-muted"
+                    >
+                      <span className="min-w-0 truncate">{note.title || 'Untitled'}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {new Date(note.updatedAt).toLocaleDateString()}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {!isUncategorized && (
               <div className="border-t pt-4">

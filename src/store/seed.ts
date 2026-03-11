@@ -1,7 +1,7 @@
 import { addDays, formatISO } from 'date-fns'
 import { nanoid } from 'nanoid'
 
-import type { AppData, Bucket, MeetingNote, Project, Task } from '@/domain/types'
+import type { AppData, Bucket, MeetingNote, Notebook, Project, Task } from '@/domain/types'
 
 const isoDate = (d: Date) => formatISO(d, { representation: 'date' })
 const isoDateTime = (d: Date) => formatISO(d)
@@ -64,19 +64,31 @@ export function createSeedData(now = new Date()): AppData {
     order: 1,
   }
 
+  const notebook1: Notebook = {
+    id: nanoid(),
+    projectId,
+    name: 'Meeting notes',
+    order: 0,
+  }
+
   const n1: MeetingNote = {
     id: nanoid(),
     projectId,
+    notebookId: notebook1.id,
+    title: 'Kickoff',
     content:
       'Kickoff: keep UI minimal (Linear-ish). Prioritize serializable store + a simple, reliable custom Gantt.',
     createdAt: isoDateTime(addDays(now, -1)),
+    updatedAt: isoDateTime(addDays(now, -1)),
     linkedTaskIds: [t1.id],
+    linkedBucketIds: [],
   }
 
   return {
     projects: { [p.id]: p },
     buckets: { [bucket1.id]: bucket1, [bucket2.id]: bucket2 },
     tasks: { [t1.id]: t1, [t2.id]: t2, [t3.id]: t3 },
+    notebooks: { [notebook1.id]: notebook1 },
     meetingNotes: { [n1.id]: n1 },
   }
 }

@@ -12,7 +12,7 @@ export function getProjectNotes(
 ) {
   return Object.values(notes)
     .filter((n) => n.projectId === projectId)
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
 }
 
 export function getProjectProgress(tasks: Task[]) {

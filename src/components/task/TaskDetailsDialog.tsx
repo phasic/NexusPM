@@ -30,7 +30,7 @@ import {
   TASK_COLOR_PRESET_STYLES,
   TASK_COLOR_PRESETS,
 } from '@/lib/taskColors'
-import type { Bucket, Task, TaskStatus } from '@/domain/types'
+import type { Bucket, MeetingNote, Task, TaskStatus } from '@/domain/types'
 import { cn } from '@/lib/utils'
 
 type DateMode = 'range' | 'duration'
@@ -67,6 +67,8 @@ export function TaskDetailsDialog({
   onCreate,
   variant = 'dialog',
   onBucketClick,
+  linkedNotes,
+  onNoteClick,
 }: {
   task: Task | null
   buckets: Bucket[]
@@ -84,6 +86,8 @@ export function TaskDetailsDialog({
   onCreate?: (data: CreateTaskData) => void
   variant?: 'dialog' | 'panel'
   onBucketClick?: (bucket: Bucket) => void
+  linkedNotes?: MeetingNote[]
+  onNoteClick?: (noteId: string) => void
 }) {
   const today = new Date().toISOString().slice(0, 10)
   const [title, setTitle] = useState('')
@@ -490,53 +494,76 @@ export function TaskDetailsDialog({
           </div>
         </div>
 
-        {!createMode && task && onDelete && (
-          <div className="border-t pt-4">
-            <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setDeleteConfirmOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete task
-              </Button>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete task?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Delete &quot;{task.title}&quot;? This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={() => {
-                      onDelete(task.id)
-                      onOpenChange(false)
-                    }}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+        {!createMode && task && linkedNotes && linkedNotes.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Linked meeting notes</div>
+            <div className="space-y-1">
+              {linkedNotes.map((note) => (
+                <button
+                  key={note.id}
+                  type="button"
+                  onClick={() => onNoteClick?.(note.id)}
+                  className="flex w-full items-center justify-between rounded-md bg-muted/60 px-2 py-1.5 text-left text-sm hover:bg-muted"
+                >
+                  <span className="min-w-0 truncate">{note.title || 'Untitled'}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {new Date(note.updatedAt).toLocaleDateString()}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
+
     </>
   )
 
   const footer = (
-    <div className={cn('flex justify-end gap-2', variant === 'panel' && 'border-t pt-4')}>
-      <Button variant="secondary" onClick={() => onOpenChange(false)}>
-        {variant === 'panel' ? 'Close' : 'Cancel'}
-      </Button>
-      <Button onClick={handleSave} disabled={createMode && !title.trim()}>
-        {createMode ? 'Add task' : 'Save'}
-      </Button>
+    <div className={cn('flex items-center justify-between gap-2', variant === 'panel' && 'border-t pt-4')}>
+      <div>
+        {!createMode && task && onDelete && (
+          <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete task
+            </Button>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete task?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Delete &quot;{task.title}&quot;? This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    onDelete(task.id)
+                    onOpenChange(false)
+                  }}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          {variant === 'panel' ? 'Close' : 'Cancel'}
+        </Button>
+        <Button onClick={handleSave} disabled={createMode && !title.trim()}>
+          {createMode ? 'Add task' : 'Save'}
+        </Button>
+      </div>
     </div>
   )
 

@@ -11,14 +11,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BucketDetailsDialog } from '@/components/bucket/BucketDetailsDialog'
 import { GanttChart } from '@/components/gantt/GanttChart'
 import { InsightsPanel } from '@/components/insights/InsightsPanel'
+import { MeetingNotesPanel } from '@/components/notes/MeetingNotesPanel'
 import { TaskDetailsDialog, type CreateTaskData } from '@/components/task/TaskDetailsDialog'
 import type { Bucket, Task } from '@/domain/types'
 import { useAppStore } from '@/store/useAppStore'
@@ -40,7 +39,7 @@ export function ProjectPage() {
       projectId
         ? Object.values(allNotes)
             .filter((n) => n.projectId === projectId)
-            .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+            .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
         : [],
     [projectId, allNotes],
   )
@@ -61,7 +60,6 @@ export function ProjectPage() {
   const reorderBuckets = useAppStore((s) => s.reorderBuckets)
   const addDependency = useAppStore((s) => s.addDependency)
   const removeDependency = useAppStore((s) => s.removeDependency)
-  const addMeetingNote = useAppStore((s) => s.addMeetingNote)
   const createBucket = useAppStore((s) => s.createBucket)
   const deleteBucket = useAppStore((s) => s.deleteBucket)
   const updateBucket = useAppStore((s) => s.updateBucket)
@@ -75,6 +73,9 @@ export function ProjectPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [addBucketDialogOpen, setAddBucketDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('timeline')
+  const [noteIdToSelect, setNoteIdToSelect] = useState<string | null>(null)
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
+  const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null)
 
   const handleAddTask = () => {
     if (!projectId) return
@@ -103,6 +104,20 @@ export function ProjectPage() {
     if (!projectId) return
     setAddBucketDialogOpen(true)
   }
+
+  useEffect(() => {
+    setSelectedNoteId(null)
+    setSelectedNotebookId(null)
+  }, [projectId])
+
+  useEffect(() => {
+    if (noteIdToSelect && allNotes[noteIdToSelect]) {
+      const note = allNotes[noteIdToSelect]
+      setSelectedNotebookId(note.notebookId)
+      setSelectedNoteId(noteIdToSelect)
+      setNoteIdToSelect(null)
+    }
+  }, [noteIdToSelect, allNotes])
 
   if (!projectId) return <Navigate to="/" replace />
   if (!project) return <Navigate to="/" replace />
@@ -203,6 +218,15 @@ export function ProjectPage() {
                             setSelectedBucket(bucket)
                             setSelectedTask(null)
                           }}
+                          linkedNotes={
+                            selectedTask
+                              ? notes.filter((n) => n.linkedTaskIds?.includes(selectedTask.id))
+                              : []
+                          }
+                          onNoteClick={(noteId) => {
+                            setNoteIdToSelect(noteId)
+                            setActiveTab('notes')
+                          }}
                         />
                       ) : (
                         <BucketDetailsDialog
@@ -218,6 +242,15 @@ export function ProjectPage() {
                           }}
                           onUpdateTask={updateTask}
                           variant="panel"
+                          linkedNotes={
+                            selectedBucket
+                              ? notes.filter((n) => n.linkedBucketIds?.includes(selectedBucket.id))
+                              : []
+                          }
+                          onNoteClick={(noteId) => {
+                            setNoteIdToSelect(noteId)
+                            setActiveTab('notes')
+                          }}
                         />
                       )}
                     </div>
@@ -243,10 +276,12 @@ export function ProjectPage() {
               setActiveTab('timeline')
             }}
             onNoteClick={(noteId) => {
+              const note = allNotes[noteId]
+              if (note) {
+                setSelectedNotebookId(note.notebookId)
+                setSelectedNoteId(noteId)
+              }
               setActiveTab('notes')
-              setTimeout(() => {
-                document.getElementById(`note-${noteId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }, 100)
             }}
           />
         </TabsContent>
@@ -254,147 +289,24 @@ export function ProjectPage() {
         <TabsContent value="notes">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <CardTitle>Meeting notes</CardTitle>
-                <NewNoteDialog
-                  tasks={orderedTasks}
-                  onAdd={(content, linkedTaskIds) =>
-                    addMeetingNote({ projectId, content, linkedTaskIds })
-                  }
-                />
-              </div>
+              <CardTitle>Meeting notes</CardTitle>
             </CardHeader>
             <CardContent>
-              {notes.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
-                  No notes yet.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {notes.map((n) => (
-                    <div key={n.id} id={`note-${n.id}`} className="rounded-xl border bg-background p-4 scroll-mt-4">
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(n.createdAt).toLocaleString()}
-                      </div>
-                      <div className="mt-2 whitespace-pre-wrap text-sm">
-                        {n.content}
-                      </div>
-                      {n.linkedTaskIds.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {n.linkedTaskIds.map((id) => (
-                            <Badge key={id} variant="secondary" className="text-foreground">
-                              {taskById[id]?.title ?? id}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <MeetingNotesPanel
+                projectId={projectId}
+                tasks={orderedTasks}
+                buckets={buckets}
+                noteIdToSelect={noteIdToSelect}
+                selectedNoteId={selectedNoteId}
+                selectedNotebookId={selectedNotebookId}
+                onSelectNote={setSelectedNoteId}
+                onSelectNotebook={setSelectedNotebookId}
+              />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  )
-}
-
-function NewNoteDialog({
-  tasks,
-  onAdd,
-}: {
-  tasks: Array<{ id: string; title: string }>
-  onAdd: (content: string, linkedTaskIds: string[]) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [content, setContent] = useState('')
-  const [linked, setLinked] = useState<string[]>([])
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          New note
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New meeting note</DialogTitle>
-          <DialogDescription>
-            Notes are timestamped and can be linked to tasks.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="text-sm font-medium">Note</div>
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="What was discussed? Decisions, next steps, risks…"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-medium">Link to tasks</div>
-            <div className="max-h-44 overflow-auto rounded-md border bg-background p-2">
-              {tasks.length === 0 ? (
-                <div className="px-2 py-1 text-sm text-muted-foreground">
-                  No tasks available.
-                </div>
-              ) : (
-                <div className="grid gap-1">
-                  {tasks.map((t) => {
-                    const checked = linked.includes(t.id)
-                    return (
-                      <label
-                        key={t.id}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-accent/40"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            setLinked((prev) =>
-                              e.target.checked
-                                ? [...prev, t.id]
-                                : prev.filter((x) => x !== t.id),
-                            )
-                          }}
-                        />
-                        <span className="truncate text-sm">{t.title}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="secondary"
-            onClick={() => setOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              if (!content.trim()) return
-              onAdd(content.trim(), linked)
-              setContent('')
-              setLinked([])
-              setOpen(false)
-            }}
-            disabled={!content.trim()}
-          >
-            Add note
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
 

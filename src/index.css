@@ -69,6 +69,11 @@
     @apply border-border;
   }
 
+  /* Ensure dropdown menus appear above all content (e.g. meeting notes inputs) */
+  [data-dropdown-content] {
+    z-index: 2147483647 !important;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings:

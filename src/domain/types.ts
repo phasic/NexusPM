@@ -46,18 +46,34 @@ export type Task = {
   owner?: string
 }
 
+export type Notebook = {
+  id: ID
+  projectId: ID
+  name: string
+  order: number
+}
+
 export type MeetingNote = {
   id: ID
   projectId: ID
+  notebookId: ID
+  title: string
   content: string
   createdAt: ISODateTime
+  updatedAt: ISODateTime
   linkedTaskIds: ID[]
+  linkedBucketIds: ID[]
+  /** People present (for meetings) */
+  peoplePresent?: string
+  /** Meeting preparation notes */
+  preparation?: string
 }
 
 export type AppData = {
   projects: Record<ID, Project>
   buckets: Record<ID, Bucket>
   tasks: Record<ID, Task>
+  notebooks: Record<ID, Notebook>
   meetingNotes: Record<ID, MeetingNote>
 }
 
