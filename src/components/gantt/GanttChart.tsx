@@ -69,9 +69,10 @@ export function GanttChart({
   onAddBucket?: () => void
   onBucketClick?: (bucket: Bucket) => void
 }) {
-  const ZOOM_LEVELS = [12, 16, 24, 32, 48] as const
-  const [zoomIndex, setZoomIndex] = useState(2)
+  const ZOOM_LEVELS = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48] as const
+  const [zoomIndex, setZoomIndex] = useState(8)
   const dayWidth = ZOOM_LEVELS[zoomIndex]
+  const showDayRow = dayWidth > 12
   const rowHeight = 36
   const bucketRowHeight = 32
 
@@ -89,6 +90,7 @@ export function GanttChart({
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const extendThreshold = 150
   const isExtendingRef = useRef(false)
+  const centerDateOnZoomRef = useRef<Date | null>(null)
 
   const { rows, taskToRowIndex } = useMemo(() => {
     const sortedBuckets = buckets.slice().sort((a, b) => a.order - b.order)
@@ -185,6 +187,50 @@ export function GanttChart({
   const reorderThrottleRef = useRef<{ taskId: string; time: number } | null>(null)
 
   const totalWidth = days.length * dayWidth
+
+  useEffect(() => {
+    const centerDate = centerDateOnZoomRef.current
+    if (!centerDate || !scrollRef.current) return
+    centerDateOnZoomRef.current = null
+    const el = scrollRef.current
+    const daysFromStart = differenceInCalendarDays(centerDate, start)
+    const dayIndex = Math.max(0, Math.min(daysFromStart, days.length - 1))
+    const centerX = 260 + dayIndex * dayWidth + dayWidth / 2
+    el.scrollLeft = Math.max(
+      0,
+      Math.min(centerX - el.clientWidth / 2, 260 + totalWidth - el.clientWidth),
+    )
+  }, [zoomIndex, start, days.length, dayWidth, totalWidth])
+
+  const getDateAtViewportCenter = () => {
+    const el = scrollRef.current
+    if (!el) return null
+    const chartCenterX = el.scrollLeft + el.clientWidth / 2 - 260
+    const dayIndex = Math.floor(chartCenterX / dayWidth)
+    return addDays(start, Math.max(0, Math.min(dayIndex, days.length - 1)))
+  }
+
+  const zoomIn = () => {
+    const centerDate = getDateAtViewportCenter()
+    if (centerDate) centerDateOnZoomRef.current = centerDate
+    setZoomIndex((i) => Math.min(ZOOM_LEVELS.length - 1, i + 1))
+  }
+
+  const zoomOut = () => {
+    const centerDate = getDateAtViewportCenter()
+    if (centerDate) centerDateOnZoomRef.current = centerDate
+    setZoomIndex((i) => Math.max(0, i - 1))
+  }
+
+  const zoomToFullYear = () => {
+    centerDateOnZoomRef.current = today
+    setZoomIndex(1)
+  }
+
+  const zoomToMonthView = () => {
+    centerDateOnZoomRef.current = today
+    setZoomIndex(ZOOM_LEVELS.length - 2)
+  }
 
   const { yearCells, monthCells } = useMemo(() => {
     const years: { year: number; startIdx: number; endIdx: number }[] = []
@@ -560,7 +606,7 @@ export function GanttChart({
           <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setZoomIndex((i) => Math.max(0, i - 1))}
+            onClick={zoomOut}
             className="flex h-7 w-7 items-center justify-center rounded border text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Zoom out"
           >
@@ -568,7 +614,7 @@ export function GanttChart({
           </button>
           <button
             type="button"
-            onClick={() => setZoomIndex((i) => Math.min(ZOOM_LEVELS.length - 1, i + 1))}
+            onClick={zoomIn}
             className="flex h-7 w-7 items-center justify-center rounded border text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Zoom in"
           >
@@ -582,6 +628,22 @@ export function GanttChart({
           >
             <Target className="h-3.5 w-3.5" />
             Today
+          </button>
+          <button
+            type="button"
+            onClick={zoomToFullYear}
+            className="flex h-7 items-center gap-1.5 rounded border px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Zoom to full year view"
+          >
+            Full year
+          </button>
+          <button
+            type="button"
+            onClick={zoomToMonthView}
+            className="flex h-7 items-center gap-1.5 rounded border px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Zoom to month view"
+          >
+            Month
           </button>
           </div>
         </div>
@@ -627,6 +689,7 @@ export function GanttChart({
                 </div>
                   ))}
                 </div>
+                {showDayRow && (
                 <div className="flex h-10 shrink-0 items-end" style={{ width: totalWidth }}>
                   {days.map((d) => {
                 const label = format(d, 'd')
@@ -646,6 +709,7 @@ export function GanttChart({
                 )
                   })}
                 </div>
+                )}
               </div>
             </div>
 
@@ -868,11 +932,23 @@ export function GanttChart({
                       style={{ top: y, height: h }}
                     >
                       <div
-                        className="absolute top-1/2 -translate-y-1/2 rounded border border-dashed border-muted-foreground/40 bg-muted/20"
+                        role={onBucketClick ? 'button' : undefined}
+                        tabIndex={onBucketClick ? 0 : undefined}
+                        className={cn(
+                          'absolute top-1/2 -translate-y-1/2 rounded border border-dashed border-muted-foreground/40 bg-muted/20',
+                          onBucketClick && 'cursor-pointer hover:bg-muted/40 hover:border-muted-foreground/60',
+                        )}
                         style={{
                           left: barX,
                           width: Math.max(dayWidth, barW),
                           height: h - 8,
+                        }}
+                        onClick={() => onBucketClick?.(row.bucket)}
+                        onKeyDown={(e) => {
+                          if (onBucketClick && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault()
+                            onBucketClick(row.bucket)
+                          }
                         }}
                       />
                     </div>
@@ -905,16 +981,27 @@ export function GanttChart({
                     className="absolute left-0 right-0 border-b"
                     style={{ top: y, height: rowHeight }}
                   >
-                    {days.map((d) => (
-                      <div
-                        key={d.toISOString()}
-                        className="absolute top-0 h-full border-r"
-                        style={{
-                          left: differenceInCalendarDays(d, start) * dayWidth,
-                          width: dayWidth,
-                        }}
-                      />
-                    ))}
+                    {showDayRow
+                      ? days.map((d) => (
+                          <div
+                            key={d.toISOString()}
+                            className="absolute top-0 h-full border-r"
+                            style={{
+                              left: differenceInCalendarDays(d, start) * dayWidth,
+                              width: dayWidth,
+                            }}
+                          />
+                        ))
+                      : monthCells.map(({ month, startIdx }) => (
+                          <div
+                            key={month}
+                            className="absolute top-0 h-full border-l"
+                            style={{
+                              left: startIdx * dayWidth,
+                              width: 1,
+                            }}
+                          />
+                        ))}
 
                     <div
                       className={cn(

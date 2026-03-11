@@ -23,6 +23,19 @@ export function buildProjectContextText(ctx: ProjectContext): string {
   }
   lines.push('')
 
+  lines.push('## Buckets')
+  if (ctx.buckets.length === 0) {
+    lines.push('(No buckets)')
+  } else {
+    for (const b of ctx.buckets) {
+      if (b.id === '__uncategorized__') continue
+      lines.push(`- **${b.name}**`)
+      if (b.owner) lines.push(`  - Owner: ${b.owner}`)
+      if (b.description) lines.push(`  - Description: ${b.description}`)
+    }
+  }
+  lines.push('')
+
   lines.push('## Tasks')
   if (ctx.tasks.length === 0) {
     lines.push('(No tasks)')
@@ -36,6 +49,8 @@ export function buildProjectContextText(ctx: ProjectContext): string {
             .join(', ')
         : 'none'
       lines.push(`- **${t.title}** (${t.status})`)
+      if (t.owner) lines.push(`  - Owner: ${t.owner}`)
+      if (t.description) lines.push(`  - Description: ${t.description}`)
       if (t.statusReason && (t.status === 'overdue' || t.status === 'blocked')) {
         lines.push(`  - Reason: ${t.statusReason}`)
       }

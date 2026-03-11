@@ -15,6 +15,8 @@ type AppState = AppData & {
       status?: TaskStatus
       statusReason?: string
       dependsOn?: ID[]
+      description?: string
+      owner?: string
     },
   ) => ID
   deleteTask: (id: ID) => void
@@ -27,7 +29,7 @@ type AppState = AppData & {
   removeDependency: (taskId: ID, dependsOnTaskId: ID) => void
 
   createBucket: (input: Pick<Bucket, 'projectId' | 'name'>) => ID
-  updateBucket: (id: ID, patch: Partial<Pick<Bucket, 'name' | 'order'>>) => void
+  updateBucket: (id: ID, patch: Partial<Pick<Bucket, 'name' | 'order' | 'description' | 'owner'>>) => void
   deleteBucket: (id: ID, options?: { deleteTasks?: boolean }) => void
   reorderBuckets: (projectId: ID, orderedBucketIds: ID[]) => void
   setTaskBucket: (taskId: ID, bucketId: ID | null) => void
@@ -87,7 +89,7 @@ export const useAppStore = create<AppState>()(
         })
       },
 
-      createTask: ({ projectId, title, startDate, endDate, status, statusReason, dependsOn }) => {
+      createTask: ({ projectId, title, startDate, endDate, status, statusReason, dependsOn, description, owner }) => {
         const id = nanoid()
         const normalized = clampDates(startDate, endDate)
         const existingInProject = Object.values(get().tasks).filter(
@@ -107,6 +109,8 @@ export const useAppStore = create<AppState>()(
           dependsOn: dependsOn ?? [],
           order: maxOrder + 1,
           ...(statusReason && { statusReason }),
+          ...(description && { description }),
+          ...(owner && { owner }),
         }
         set((s) => ({ tasks: { ...s.tasks, [id]: t } }))
         return id
@@ -400,7 +404,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 5,
+      version: 6,
       partialize: (s) => ({
         projects: s.projects,
         buckets: s.buckets,
@@ -439,6 +443,9 @@ export const useAppStore = create<AppState>()(
             }
           }
           return { ...p, tasks }
+        }
+        if (version < 6) {
+          return persisted as AppData & { projectInsights: Record<string, string | null> }
         }
         return persisted as AppData & { projectInsights: Record<string, string | null> }
       },

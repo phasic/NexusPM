@@ -18,11 +18,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   addColorToHistory,
   getColorHistory,
@@ -46,6 +46,8 @@ export type CreateTaskData = {
   status: TaskStatus
   statusReason?: string
   dependsOn: string[]
+  description?: string
+  owner?: string
 }
 
 export function TaskDetailsDialog({
@@ -63,6 +65,8 @@ export function TaskDetailsDialog({
   createMode,
   projectId,
   onCreate,
+  variant = 'dialog',
+  onBucketClick,
 }: {
   task: Task | null
   buckets: Bucket[]
@@ -78,9 +82,13 @@ export function TaskDetailsDialog({
   createMode?: boolean
   projectId?: string
   onCreate?: (data: CreateTaskData) => void
+  variant?: 'dialog' | 'panel'
+  onBucketClick?: (bucket: Bucket) => void
 }) {
   const today = new Date().toISOString().slice(0, 10)
   const [title, setTitle] = useState('')
+  const [owner, setOwner] = useState('')
+  const [description, setDescription] = useState('')
   const [status, setStatus] = useState<TaskStatus>('open')
   const [statusReason, setStatusReason] = useState('')
   const [bucketId, setBucketId] = useState<string>('')
@@ -98,6 +106,8 @@ export function TaskDetailsDialog({
     if (createMode && open) {
       const t = new Date().toISOString().slice(0, 10)
       setTitle('')
+      setOwner('')
+      setDescription('')
       setStatus('open')
       setStatusReason('')
       setBucketId('')
@@ -113,6 +123,8 @@ export function TaskDetailsDialog({
     }
     if (!task) return
     setTitle(task.title)
+    setOwner(task.owner ?? '')
+    setDescription(task.description ?? '')
     setStatus(task.status)
     setStatusReason(task.statusReason ?? '')
     setBucketId(task.bucketId ?? '')
@@ -147,6 +159,8 @@ export function TaskDetailsDialog({
         status,
         statusReason: (status === 'overdue' || status === 'blocked') ? statusReason.trim() || undefined : undefined,
         dependsOn: pendingDeps,
+        description: description.trim() || undefined,
+        owner: owner.trim() || undefined,
       })
       if (color && !isPresetColor(color) && /^#[0-9A-Fa-f]{6}$/.test(color)) {
         addColorToHistory(color)
@@ -166,6 +180,8 @@ export function TaskDetailsDialog({
       endDate: end,
       color: color || undefined,
       statusReason: (status === 'overdue' || status === 'blocked') ? statusReason.trim() || undefined : undefined,
+      description: description.trim() || undefined,
+      owner: owner.trim() || undefined,
     }
     if (status !== 'overdue' && status !== 'blocked') {
       patch.statusReason = undefined
@@ -176,7 +192,9 @@ export function TaskDetailsDialog({
       startDate !== task.startDate ||
       end !== task.endDate ||
       (color || '') !== (task.color ?? '') ||
-      (patch.statusReason ?? '') !== (task.statusReason ?? '')
+      (patch.statusReason ?? '') !== (task.statusReason ?? '') ||
+      (description.trim() || '') !== (task.description ?? '') ||
+      (owner.trim() || '') !== (task.owner ?? '')
     if (hasChanges) {
       onUpdate(task.id, patch)
       if (color && !isPresetColor(color) && /^#[0-9A-Fa-f]{6}$/.test(color)) {
@@ -190,18 +208,8 @@ export function TaskDetailsDialog({
   const otherTasks = tasks.filter((t) => t.id !== task?.id)
   const currentDepIds = createMode ? pendingDeps : (task?.dependsOn ?? [])
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{createMode ? 'New task' : 'Task details'}</DialogTitle>
-          <DialogDescription>
-            {createMode
-              ? 'Add a new task. Set name, bucket, dates, color, and dependencies.'
-              : 'Edit bucket, dates, duration, color, and dependencies.'}
-          </DialogDescription>
-        </DialogHeader>
-
+  const formContent = (
+    <>
         <div className="space-y-5">
           <div className="space-y-2">
             <div className="text-sm font-medium">Title</div>
@@ -213,107 +221,23 @@ export function TaskDetailsDialog({
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm font-medium">Status</div>
-            <select
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as TaskStatus)}
-            >
-              {TASK_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {(status === 'overdue' || status === 'blocked') && (
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Reason</div>
-              <Input
-                value={statusReason}
-                onChange={(e) => setStatusReason(e.target.value)}
-                placeholder={status === 'overdue' ? 'Why is this overdue?' : 'What is blocking this?'}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <div className="text-sm font-medium">Bucket</div>
-            <select
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-              value={bucketId}
-              onChange={(e) => setBucketId(e.target.value)}
-            >
-              <option value="">— None —</option>
-              {buckets.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
+            <div className="text-sm font-medium">Owner</div>
+            <Input
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              placeholder="Assign to a person"
+            />
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm font-medium">Color</div>
-            <div className="flex flex-wrap items-center gap-2">
-              {TASK_COLOR_PRESETS.map((c) => {
-                const styles = TASK_COLOR_PRESET_STYLES[c]
-                const selected = color === c
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(selected ? '' : c)}
-                    className={cn(
-                      'h-8 w-8 rounded-md border-2 transition-colors',
-                      styles.bg,
-                      styles.border,
-                      selected ? 'ring-2 ring-offset-2 ring-foreground' : 'hover:opacity-80',
-                    )}
-                    title={c}
-                  />
-                )
-              })}
-              <div className="flex items-center gap-1">
-                <input
-                  type="color"
-                  value={
-                    color && color.startsWith('#') && /^#[0-9A-Fa-f]{6}$/.test(color)
-                      ? color
-                      : '#94a3b8'
-                  }
-                  onChange={(e) => setColor(e.target.value)}
-                  className="h-8 w-8 cursor-pointer rounded-md border border-input bg-transparent p-0"
-                  title="Custom color"
-                />
-                <span className="text-xs text-muted-foreground">Custom</span>
-              </div>
-            </div>
-            {colorHistory.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Recent:</span>
-                {colorHistory.map((hex) => {
-                  const selected = color.toLowerCase() === hex.toLowerCase()
-                  return (
-                    <button
-                      key={hex}
-                      type="button"
-                      onClick={() => setColor(selected ? '' : hex)}
-                      className={cn(
-                        'h-6 w-6 rounded border-2 transition-colors',
-                        selected ? 'ring-2 ring-offset-2 ring-foreground' : 'hover:opacity-80',
-                      )}
-                      style={{
-                        backgroundColor: hex,
-                        borderColor: `${hex}99`,
-                      }}
-                      title={hex}
-                    />
-                  )
-                })}
-              </div>
-            )}
+            <div className="text-sm font-medium">Description</div>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Extra info, documentation, links…"
+              rows={3}
+              className="resize-y min-h-[60px]"
+            />
           </div>
 
           <div className="space-y-2">
@@ -460,6 +384,110 @@ export function TaskDetailsDialog({
               </div>
             )}
           </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Status</div>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as TaskStatus)}
+            >
+              {TASK_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(status === 'overdue' || status === 'blocked') && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Reason</div>
+              <Input
+                value={statusReason}
+                onChange={(e) => setStatusReason(e.target.value)}
+                placeholder={status === 'overdue' ? 'Why is this overdue?' : 'What is blocking this?'}
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Bucket</div>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={bucketId}
+              onChange={(e) => setBucketId(e.target.value)}
+            >
+              <option value="">— None —</option>
+              {buckets.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Color</div>
+            <div className="flex flex-wrap items-center gap-2">
+              {TASK_COLOR_PRESETS.map((c) => {
+                const styles = TASK_COLOR_PRESET_STYLES[c]
+                const selected = color === c
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(selected ? '' : c)}
+                    className={cn(
+                      'h-8 w-8 rounded-md border-2 transition-colors',
+                      styles.bg,
+                      styles.border,
+                      selected ? 'ring-2 ring-offset-2 ring-foreground' : 'hover:opacity-80',
+                    )}
+                    title={c}
+                  />
+                )
+              })}
+              <div className="flex items-center gap-1">
+                <input
+                  type="color"
+                  value={
+                    color && color.startsWith('#') && /^#[0-9A-Fa-f]{6}$/.test(color)
+                      ? color
+                      : '#94a3b8'
+                  }
+                  onChange={(e) => setColor(e.target.value)}
+                  className="h-8 w-8 cursor-pointer rounded-md border border-input bg-transparent p-0"
+                  title="Custom color"
+                />
+                <span className="text-xs text-muted-foreground">Custom</span>
+              </div>
+            </div>
+            {colorHistory.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Recent:</span>
+                {colorHistory.map((hex) => {
+                  const selected = color.toLowerCase() === hex.toLowerCase()
+                  return (
+                    <button
+                      key={hex}
+                      type="button"
+                      onClick={() => setColor(selected ? '' : hex)}
+                      className={cn(
+                        'h-6 w-6 rounded border-2 transition-colors',
+                        selected ? 'ring-2 ring-offset-2 ring-foreground' : 'hover:opacity-80',
+                      )}
+                      style={{
+                        backgroundColor: hex,
+                        borderColor: `${hex}99`,
+                      }}
+                      title={hex}
+                    />
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {!createMode && task && onDelete && (
@@ -498,15 +526,71 @@ export function TaskDetailsDialog({
             </AlertDialog>
           </div>
         )}
+    </>
+  )
 
-        <DialogFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={createMode && !title.trim()}>
-            {createMode ? 'Add task' : 'Save'}
-          </Button>
-        </DialogFooter>
+  const footer = (
+    <div className={cn('flex justify-end gap-2', variant === 'panel' && 'border-t pt-4')}>
+      <Button variant="secondary" onClick={() => onOpenChange(false)}>
+        {variant === 'panel' ? 'Close' : 'Cancel'}
+      </Button>
+      <Button onClick={handleSave} disabled={createMode && !title.trim()}>
+        {createMode ? 'Add task' : 'Save'}
+      </Button>
+    </div>
+  )
+
+  const currentBucket = task?.bucketId ? buckets.find((b) => b.id === task.bucketId) : null
+  const headerTitle = createMode
+    ? 'New task'
+    : currentBucket && onBucketClick
+      ? (
+          <span className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onBucketClick(currentBucket)}
+              className="text-muted-foreground hover:text-foreground hover:underline"
+            >
+              {currentBucket.name}
+            </button>
+            <span className="text-muted-foreground">›</span>
+            <span>{task?.title}</span>
+          </span>
+        )
+      : task
+        ? task.title
+        : 'Task details'
+
+  if (variant === 'panel') {
+    return (
+      <div className="space-y-4 rounded-xl border bg-background p-4">
+        <div>
+          <h3 className="text-base font-semibold">{headerTitle}</h3>
+          <p className="text-sm text-muted-foreground">
+            {createMode
+              ? 'Add a new task. Set name, bucket, dates, color, and dependencies.'
+              : 'Edit bucket, dates, duration, color, and dependencies.'}
+          </p>
+        </div>
+        {formContent}
+        {footer}
+      </div>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{headerTitle}</DialogTitle>
+          <DialogDescription>
+            {createMode
+              ? 'Add a new task. Set name, bucket, dates, color, and dependencies.'
+              : 'Edit bucket, dates, duration, color, and dependencies.'}
+          </DialogDescription>
+        </DialogHeader>
+        {formContent}
+        {footer}
       </DialogContent>
     </Dialog>
   )

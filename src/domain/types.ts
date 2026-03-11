@@ -19,6 +19,8 @@ export type Bucket = {
   projectId: ID
   name: string
   order: number
+  description?: string
+  owner?: string
 }
 
 export type TaskColorPreset = 'green' | 'orange' | 'red'
@@ -40,6 +42,8 @@ export type Task = {
   order?: number
   /** Reason when status is overdue or blocked. */
   statusReason?: string
+  description?: string
+  owner?: string
 }
 
 export type MeetingNote = {
