@@ -30,10 +30,12 @@ import {
   TASK_COLOR_PRESET_STYLES,
   TASK_COLOR_PRESETS,
 } from '@/lib/taskColors'
-import type { Bucket, Task } from '@/domain/types'
+import type { Bucket, Task, TaskStatus } from '@/domain/types'
 import { cn } from '@/lib/utils'
 
 type DateMode = 'range' | 'duration'
+
+const TASK_STATUSES: TaskStatus[] = ['open', 'started', 'closed', 'overdue', 'blocked']
 
 export type CreateTaskData = {
   title: string
@@ -41,6 +43,8 @@ export type CreateTaskData = {
   startDate: string
   endDate: string
   color: string
+  status: TaskStatus
+  statusReason?: string
   dependsOn: string[]
 }
 
@@ -77,6 +81,8 @@ export function TaskDetailsDialog({
 }) {
   const today = new Date().toISOString().slice(0, 10)
   const [title, setTitle] = useState('')
+  const [status, setStatus] = useState<TaskStatus>('open')
+  const [statusReason, setStatusReason] = useState('')
   const [bucketId, setBucketId] = useState<string>('')
   const [startDate, setStartDate] = useState(today)
   const [endDate, setEndDate] = useState(today)
@@ -92,6 +98,8 @@ export function TaskDetailsDialog({
     if (createMode && open) {
       const t = new Date().toISOString().slice(0, 10)
       setTitle('')
+      setStatus('open')
+      setStatusReason('')
       setBucketId('')
       setStartDate(t)
       setEndDate(t)
@@ -105,6 +113,8 @@ export function TaskDetailsDialog({
     }
     if (!task) return
     setTitle(task.title)
+    setStatus(task.status)
+    setStatusReason(task.statusReason ?? '')
     setBucketId(task.bucketId ?? '')
     setStartDate(task.startDate)
     setEndDate(task.endDate)
@@ -134,6 +144,8 @@ export function TaskDetailsDialog({
         startDate,
         endDate: end,
         color: color || '',
+        status,
+        statusReason: (status === 'overdue' || status === 'blocked') ? statusReason.trim() || undefined : undefined,
         dependsOn: pendingDeps,
       })
       if (color && !isPresetColor(color) && /^#[0-9A-Fa-f]{6}$/.test(color)) {
@@ -149,15 +161,22 @@ export function TaskDetailsDialog({
     }
     const patch: Partial<Task> = {
       title,
+      status,
       startDate,
       endDate: end,
       color: color || undefined,
+      statusReason: (status === 'overdue' || status === 'blocked') ? statusReason.trim() || undefined : undefined,
+    }
+    if (status !== 'overdue' && status !== 'blocked') {
+      patch.statusReason = undefined
     }
     const hasChanges =
       title !== task.title ||
+      status !== task.status ||
       startDate !== task.startDate ||
       end !== task.endDate ||
-      (color || '') !== (task.color ?? '')
+      (color || '') !== (task.color ?? '') ||
+      (patch.statusReason ?? '') !== (task.statusReason ?? '')
     if (hasChanges) {
       onUpdate(task.id, patch)
       if (color && !isPresetColor(color) && /^#[0-9A-Fa-f]{6}$/.test(color)) {
@@ -192,6 +211,32 @@ export function TaskDetailsDialog({
               placeholder="Task title"
             />
           </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Status</div>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as TaskStatus)}
+            >
+              {TASK_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(status === 'overdue' || status === 'blocked') && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Reason</div>
+              <Input
+                value={statusReason}
+                onChange={(e) => setStatusReason(e.target.value)}
+                placeholder={status === 'overdue' ? 'Why is this overdue?' : 'What is blocking this?'}
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="text-sm font-medium">Bucket</div>

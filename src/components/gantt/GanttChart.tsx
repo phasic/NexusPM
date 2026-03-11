@@ -12,7 +12,7 @@ import {
 } from 'date-fns'
 import { ChevronDown, ChevronRight, Folder, FolderPlus, GripVertical, Minus, Plus, SquarePlus, Target } from 'lucide-react'
 
-import type { Bucket, ID, Task } from '@/domain/types'
+import type { Bucket, ID, Task, TaskStatus } from '@/domain/types'
 import {
   getCustomColorStyle,
   isPresetColor,
@@ -43,9 +43,9 @@ export function GanttChart({
   taskById,
   buckets,
   bucketById,
-  isTaskBlocked,
   onMoveTaskByDays,
   onTaskClick,
+  onUpdateTask,
   onReorderTasksInBucket,
   onSetTaskBucket,
   onReorderBuckets,
@@ -59,9 +59,9 @@ export function GanttChart({
   taskById: Record<ID, Task>
   buckets: Bucket[]
   bucketById: Record<ID, Bucket>
-  isTaskBlocked: (taskId: ID) => boolean
   onMoveTaskByDays: (taskId: ID, deltaDays: number) => void
   onTaskClick?: (task: Task) => void
+  onUpdateTask?: (taskId: ID, patch: Partial<Task>) => void
   onReorderTasksInBucket?: (bucketId: ID, orderedTaskIds: ID[]) => void
   onSetTaskBucket?: (taskId: ID, bucketId: ID | null) => void
   onReorderBuckets?: (projectId: ID, orderedBucketIds: ID[]) => void
@@ -783,7 +783,25 @@ export function GanttChart({
                         <GripVertical className="h-4 w-4" />
                       </div>
                     )}
-                    <div className="truncate">{row.task.title}</div>
+                    <div className="min-w-0 flex-1 truncate">{row.task.title}</div>
+                    {onUpdateTask && (
+                      <select
+                        value={row.task.status}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          onUpdateTask(row.task.id, { status: e.target.value as TaskStatus })
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-6 shrink-0 rounded border border-input bg-background px-2 text-xs"
+                        aria-label={`Status for ${row.task.title}`}
+                      >
+                        <option value="open">Open</option>
+                        <option value="started">Started</option>
+                        <option value="closed">Closed</option>
+                        <option value="overdue">Overdue</option>
+                        <option value="blocked">Blocked</option>
+                      </select>
+                    )}
                     </div>
                   </div>
                 )
@@ -868,8 +886,9 @@ export function GanttChart({
                   differenceInCalendarDays(parseISO(dates.endDate), parseISO(dates.startDate)) + 1
                 const x = offset * dayWidth
                 const w = Math.max(dayWidth, duration * dayWidth)
-                const blocked = isTaskBlocked(t.id)
-                const done = t.status === 'done'
+                const done = t.status === 'closed'
+                const overdue = t.status === 'overdue'
+                const blockedStatus = t.status === 'blocked'
                 const y = getRowY(rowIdx)
                 const presetStyles =
                   t.color && isPresetColor(t.color)
@@ -902,11 +921,15 @@ export function GanttChart({
                         'absolute top-1/2 -translate-y-1/2 cursor-pointer rounded-md border px-2 py-1 text-xs font-medium select-none',
                         done
                           ? 'bg-muted text-muted-foreground'
-                          : presetStyles
-                            ? `${presetStyles.bg} ${presetStyles.border} ${presetStyles.text}`
-                            : customStyle
-                              ? ''
-                              : 'bg-primary/10 text-foreground border-primary/20',
+                          : overdue
+                            ? 'bg-amber-500/20 text-amber-800 dark:bg-amber-500/25 dark:text-amber-200 border-amber-500/40'
+                            : blockedStatus
+                              ? 'bg-muted/80 text-muted-foreground border-muted-foreground/30'
+                              : presetStyles
+                                ? `${presetStyles.bg} ${presetStyles.border} ${presetStyles.text}`
+                                : customStyle
+                                  ? ''
+                                  : 'bg-primary/10 text-foreground border-primary/20',
                       )}
                       style={{
                         left: x,
@@ -919,9 +942,8 @@ export function GanttChart({
                       tabIndex={0}
                       title={`${t.title}\n${dates.startDate} → ${dates.endDate}`}
                     >
-                      <div className="truncate">
+                      <div className="min-w-0 flex-1 truncate">
                         {t.title}
-                        {blocked ? ' (blocked)' : ''}
                       </div>
                     </div>
                   </div>

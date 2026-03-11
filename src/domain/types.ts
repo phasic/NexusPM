@@ -3,7 +3,7 @@ export type ID = string
 export type ISODate = string
 export type ISODateTime = string
 
-export type TaskStatus = 'todo' | 'in_progress' | 'done'
+export type TaskStatus = 'open' | 'started' | 'closed' | 'overdue' | 'blocked'
 
 export type Project = {
   id: ID
@@ -38,6 +38,8 @@ export type Task = {
   color?: TaskColor
   /** Display order within bucket (lower = first). */
   order?: number
+  /** Reason when status is overdue or blocked. */
+  statusReason?: string
 }
 
 export type MeetingNote = {

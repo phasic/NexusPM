@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BucketDetailsDialog } from '@/components/bucket/BucketDetailsDialog'
 import { GanttChart } from '@/components/gantt/GanttChart'
+import { InsightsPanel } from '@/components/insights/InsightsPanel'
 import { TaskDetailsDialog, type CreateTaskData } from '@/components/task/TaskDetailsDialog'
 import type { Bucket, Task } from '@/domain/types'
 import { cn } from '@/lib/utils'
@@ -58,7 +59,6 @@ export function ProjectPage() {
   )
   const bucketById = allBuckets
   const taskById = allTasks
-  const isTaskBlocked = useAppStore((s) => s.isTaskBlocked)
   const moveTaskByDays = useAppStore((s) => s.moveTaskByDays)
   const reorderTasksInBucket = useAppStore((s) => s.reorderTasksInBucket)
   const reorderBuckets = useAppStore((s) => s.reorderBuckets)
@@ -77,6 +77,7 @@ export function ProjectPage() {
   const [selectedBucket, setSelectedBucket] = useState<Bucket | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [addBucketDialogOpen, setAddBucketDialogOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('timeline')
 
   const handleAddTask = () => {
     if (!projectId) return
@@ -90,6 +91,8 @@ export function ProjectPage() {
       title: data.title,
       startDate: data.startDate,
       endDate: data.endDate,
+      status: data.status,
+      statusReason: data.statusReason,
       dependsOn: data.dependsOn,
     })
     if (data.color) updateTask(id, { color: data.color })
@@ -105,7 +108,7 @@ export function ProjectPage() {
   if (!projectId) return <Navigate to="/" replace />
   if (!project) return <Navigate to="/" replace />
 
-  const done = tasks.filter((t) => t.status === 'done').length
+  const done = tasks.filter((t) => t.status === 'closed').length
   const orderedTasks = useMemo(
     () =>
       tasks.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id)),
@@ -121,15 +124,16 @@ export function ProjectPage() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-foreground">
-            {done}/{tasks.length} done
+            {done}/{tasks.length} closed
           </Badge>
         </div>
       </div>
 
-      <Tabs defaultValue="timeline">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="notes">Meeting notes</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
         </TabsList>
 
         <TabsContent value="timeline">
@@ -146,9 +150,9 @@ export function ProjectPage() {
                     taskById={taskById}
                     buckets={buckets}
                     bucketById={bucketById}
-                    isTaskBlocked={isTaskBlocked}
                     onMoveTaskByDays={moveTaskByDays}
                     onTaskClick={setSelectedTask}
+                    onUpdateTask={updateTask}
                     onReorderTasksInBucket={reorderTasksInBucket}
                     onSetTaskBucket={setTaskBucket}
                     onReorderBuckets={reorderBuckets}
@@ -187,6 +191,7 @@ export function ProjectPage() {
                     onUpdateBucket={(id, patch) => updateBucket(id, patch)}
                     onDeleteBucket={deleteBucket}
                     onTaskClick={setSelectedTask}
+                    onUpdateTask={updateTask}
                   />
 
                   <AddBucketDialog
@@ -218,6 +223,30 @@ export function ProjectPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="insights">
+          <InsightsPanel
+            projectId={projectId}
+            context={{
+              project,
+              tasks: orderedTasks,
+              buckets,
+              notes,
+              taskById,
+              bucketById,
+            }}
+            onTaskClick={(task) => {
+              setSelectedTask(task)
+              setActiveTab('timeline')
+            }}
+            onNoteClick={(noteId) => {
+              setActiveTab('notes')
+              setTimeout(() => {
+                document.getElementById(`note-${noteId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }, 100)
+            }}
+          />
+        </TabsContent>
+
         <TabsContent value="notes">
           <Card>
             <CardHeader>
@@ -239,7 +268,7 @@ export function ProjectPage() {
               ) : (
                 <div className="space-y-3">
                   {notes.map((n) => (
-                    <div key={n.id} className="rounded-xl border bg-background p-4">
+                    <div key={n.id} id={`note-${n.id}`} className="rounded-xl border bg-background p-4 scroll-mt-4">
                       <div className="text-xs text-muted-foreground">
                         {new Date(n.createdAt).toLocaleString()}
                       </div>

@@ -17,12 +17,12 @@ export function getProjectNotes(
 
 export function getProjectProgress(tasks: Task[]) {
   if (tasks.length === 0) return 0
-  const done = tasks.filter((t) => t.status === 'done').length
+  const done = tasks.filter((t) => t.status === 'closed').length
   return done / tasks.length
 }
 
 export function getProjectNextDeadline(tasks: Task[]) {
-  const pending = tasks.filter((t) => t.status !== 'done')
+  const pending = tasks.filter((t) => t.status !== 'closed')
   if (pending.length === 0) return null
   const soonest = pending
     .slice()
@@ -33,17 +33,17 @@ export function getProjectNextDeadline(tasks: Task[]) {
 export function isTaskBlocked(task: Task, taskById: Record<string, Task>) {
   return task.dependsOn.some((id) => {
     const dep = taskById[id]
-    return dep ? dep.status !== 'done' : false
+    return dep ? dep.status !== 'closed' : false
   })
 }
 
 export function getProjectBlockedTasks(tasks: Task[], taskById: Record<string, Task>) {
-  return tasks.filter((t) => t.status !== 'done' && isTaskBlocked(t, taskById))
+  return tasks.filter((t) => t.status !== 'closed' && isTaskBlocked(t, taskById))
 }
 
 export function isProjectActive(project: Project, tasks: Task[]) {
   void project
-  return tasks.some((t) => t.status !== 'done')
+  return tasks.some((t) => t.status !== 'closed')
 }
 
 export function getDueInDays(isoDate: string, now = new Date()) {

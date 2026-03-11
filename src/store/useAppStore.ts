@@ -13,6 +13,7 @@ type AppState = AppData & {
   createTask: (
     input: Pick<Task, 'projectId' | 'title' | 'startDate' | 'endDate'> & {
       status?: TaskStatus
+      statusReason?: string
       dependsOn?: ID[]
     },
   ) => ID
@@ -42,6 +43,9 @@ type AppState = AppData & {
   getProjectNotes: (projectId: ID) => MeetingNote[]
   isTaskBlocked: (taskId: ID) => boolean
   getBlockingDependencies: (taskId: ID) => Task[]
+
+  projectInsights: Record<ID, string | null>
+  setProjectInsights: (projectId: ID, insights: string | null) => void
 }
 
 const STORAGE_KEY = 'nexuspm:data:v1'
@@ -83,7 +87,7 @@ export const useAppStore = create<AppState>()(
         })
       },
 
-      createTask: ({ projectId, title, startDate, endDate, status, dependsOn }) => {
+      createTask: ({ projectId, title, startDate, endDate, status, statusReason, dependsOn }) => {
         const id = nanoid()
         const normalized = clampDates(startDate, endDate)
         const existingInProject = Object.values(get().tasks).filter(
@@ -99,9 +103,10 @@ export const useAppStore = create<AppState>()(
           title,
           startDate: normalized.startDate,
           endDate: normalized.endDate,
-          status: status ?? 'todo',
+          status: status ?? 'open',
           dependsOn: dependsOn ?? [],
           order: maxOrder + 1,
+          ...(statusReason && { statusReason }),
         }
         set((s) => ({ tasks: { ...s.tasks, [id]: t } }))
         return id
@@ -371,7 +376,7 @@ export const useAppStore = create<AppState>()(
         if (!t) return false
         return t.dependsOn.some((depId) => {
           const dep = get().tasks[depId]
-          return dep ? dep.status !== 'done' : false
+          return dep ? dep.status !== 'closed' : false
         })
       },
 
@@ -380,20 +385,31 @@ export const useAppStore = create<AppState>()(
         if (!t) return []
         return t.dependsOn
           .map((id) => get().tasks[id])
-          .filter((dep): dep is Task => Boolean(dep) && dep.status !== 'done')
+          .filter((dep): dep is Task => Boolean(dep) && dep.status !== 'closed')
+      },
+
+      projectInsights: {},
+      setProjectInsights: (projectId, insights) => {
+        set((s) => ({
+          projectInsights: {
+            ...s.projectInsights,
+            [projectId]: insights,
+          },
+        }))
       },
     }),
     {
       name: STORAGE_KEY,
-      version: 3,
+      version: 5,
       partialize: (s) => ({
         projects: s.projects,
         buckets: s.buckets,
         tasks: s.tasks,
         meetingNotes: s.meetingNotes,
+        projectInsights: s.projectInsights,
       }),
       migrate: (persisted, version) => {
-        const p = persisted as Partial<AppData>
+        const p = persisted as Partial<AppData & { projectInsights?: Record<string, string | null> }>
         if (version < 2 && !p.buckets) {
           return { ...p, buckets: {} }
         }
@@ -406,7 +422,25 @@ export const useAppStore = create<AppState>()(
           }
           return { ...p, tasks }
         }
-        return persisted as AppData
+        if (version < 4 && !(p as { projectInsights?: unknown }).projectInsights) {
+          return { ...p, projectInsights: {} }
+        }
+        if (version < 5 && p.tasks) {
+          const statusMap: Record<string, string> = {
+            todo: 'open',
+            in_progress: 'started',
+            done: 'closed',
+          }
+          const tasks = { ...p.tasks }
+          for (const id of Object.keys(tasks)) {
+            const t = tasks[id]
+            if (t?.status && statusMap[t.status as string]) {
+              tasks[id] = { ...t, status: statusMap[t.status as string] as Task['status'] }
+            }
+          }
+          return { ...p, tasks }
+        }
+        return persisted as AppData & { projectInsights: Record<string, string | null> }
       },
     },
   ),

@@ -1,3 +1,22 @@
+# NexusPM
+
+Project management app with Gantt timeline, buckets, dependencies, meeting notes, and AI-powered insights.
+
+## AI Insights
+
+The **Insights** tab uses a local AI model to analyze your project (tasks, dependencies, meeting notes) and surface risks, open points, next steps, and blind spots.
+
+**Setup (Ollama):**
+
+1. Install [Ollama](https://ollama.com)
+2. Pull a model: `ollama pull qwen2.5:7b`
+3. Run `ollama serve` (or start Ollama app)
+4. Open a project → Insights tab → **Analyze**
+
+You can swap models via the settings (gear) button. Works with any OpenAI-compatible API (Ollama, LM Studio, etc.).
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

@@ -21,7 +21,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import type { Bucket, Task } from '@/domain/types'
+import type { Bucket, Task, TaskStatus } from '@/domain/types'
+import { cn } from '@/lib/utils'
 
 export function BucketDetailsDialog({
   bucket,
@@ -31,6 +32,7 @@ export function BucketDetailsDialog({
   onUpdateBucket,
   onDeleteBucket,
   onTaskClick,
+  onUpdateTask,
 }: {
   bucket: Bucket | null
   tasks: Task[]
@@ -39,6 +41,7 @@ export function BucketDetailsDialog({
   onUpdateBucket: (id: string, patch: { name: string }) => void
   onDeleteBucket: (id: string, options?: { deleteTasks?: boolean }) => void
   onTaskClick?: (task: Task) => void
+  onUpdateTask?: (taskId: string, patch: Partial<Task>) => void
 }) {
   const [name, setName] = useState('')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -109,20 +112,49 @@ export function BucketDetailsDialog({
               ) : (
                 <div className="max-h-44 overflow-auto rounded-md border bg-muted/30">
                   {bucketTasks.map((t) => (
-                    <button
+                    <div
                       key={t.id}
-                      type="button"
-                      onClick={() => {
-                        onTaskClick?.(t)
-                        onOpenChange(false)
-                      }}
-                      className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-muted/60"
+                      className="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted/60"
                     >
-                      <span className="truncate">{t.title}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {t.status} • {t.startDate}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onTaskClick?.(t)
+                          onOpenChange(false)
+                        }}
+                        className="min-w-0 flex-1 truncate text-left"
+                      >
+                        {t.title}
+                      </button>
+                      <span
+                        className={cn(
+                          'shrink-0 text-xs text-muted-foreground',
+                          t.statusReason && (t.status === 'overdue' || t.status === 'blocked') && 'max-w-28 truncate',
+                        )}
+                        title={
+                          t.statusReason && (t.status === 'overdue' || t.status === 'blocked')
+                            ? t.statusReason
+                            : undefined
+                        }
+                      >
+                        {t.startDate}
+                        {t.statusReason && (t.status === 'overdue' || t.status === 'blocked') && ` · ${t.statusReason}`}
                       </span>
-                    </button>
+                      {onUpdateTask && (
+                        <select
+                          value={t.status}
+                          onChange={(e) => onUpdateTask(t.id, { status: e.target.value as TaskStatus })}
+                          className="h-7 shrink-0 rounded border border-input bg-background px-2 text-xs"
+                          aria-label={`Status for ${t.title}`}
+                        >
+                          <option value="open">Open</option>
+                          <option value="started">Started</option>
+                          <option value="closed">Closed</option>
+                          <option value="overdue">Overdue</option>
+                          <option value="blocked">Blocked</option>
+                        </select>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
