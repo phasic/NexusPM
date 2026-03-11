@@ -393,7 +393,7 @@ export const useAppStore = create<AppState>()(
           const current = s.meetingNotes[id]
           if (!current) return s
           const next = { ...current, ...patch }
-          if (Object.keys(patch).some((k) => ['content', 'title', 'peoplePresent', 'preparation', 'linkedTaskIds', 'linkedBucketIds'].includes(k))) {
+          if (Object.keys(patch).some((k) => ['content', 'title', 'peoplePresent', 'preparation', 'linkedTaskIds', 'linkedBucketIds', 'cleanedNotes'].includes(k))) {
             next.updatedAt = new Date().toISOString()
           }
           return { meetingNotes: { ...s.meetingNotes, [id]: next } }

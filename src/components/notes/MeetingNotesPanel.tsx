@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { BookOpen, CheckSquare, ChevronRight, Folder, PanelLeftClose, PanelRight, Plus, Trash2, X } from 'lucide-react'
+import { BookOpen, CheckSquare, ChevronRight, Folder, PanelLeftClose, PanelRight, Plus, Sparkles, Trash2, X } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,8 +24,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/notes/RichTextEditor'
 import type { Bucket, MeetingNote, Task } from '@/domain/types'
+import { cleanMeetingNotes, getModelConfig } from '@/lib/aiClient'
+import { htmlToPlainText, markdownToHtml } from '@/lib/richTextUtils'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/useAppStore'
 
@@ -200,7 +202,7 @@ export function MeetingNotesPanel({
     : null
 
   return (
-    <div className="flex h-[600px] overflow-hidden rounded-xl border bg-background">
+    <div className="flex min-h-[calc(100dvh-11rem)] overflow-hidden rounded-xl border bg-background">
       {/* Left sidebar - notebooks */}
       <div
         className={cn(
@@ -383,7 +385,7 @@ export function MeetingNotesPanel({
       </div>
 
       {/* Main content - note editor */}
-      <div className="min-w-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {selectedNote ? (
           <NoteEditor
             note={selectedNote}
@@ -424,7 +426,10 @@ function NoteEditor({
   const [preparation, setPreparation] = useState(note.preparation ?? '')
   const [linkedTaskIds, setLinkedTaskIds] = useState(note.linkedTaskIds)
   const [linkedBucketIds, setLinkedBucketIds] = useState(note.linkedBucketIds ?? [])
+  const [cleanedNotes, setCleanedNotes] = useState(note.cleanedNotes ?? '')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [cleanupLoading, setCleanupLoading] = useState(false)
+  const [cleanupError, setCleanupError] = useState<string | null>(null)
 
   useEffect(() => {
     setTitle(note.title)
@@ -433,6 +438,7 @@ function NoteEditor({
     setPreparation(note.preparation ?? '')
     setLinkedTaskIds(note.linkedTaskIds)
     setLinkedBucketIds(note.linkedBucketIds ?? [])
+    setCleanedNotes(note.cleanedNotes ?? '')
     setDeleteConfirmOpen(false)
   }, [note.id])
 
@@ -441,11 +447,36 @@ function NoteEditor({
     if (content !== note.content) onUpdate(note.id, { content })
     if (peoplePresent !== (note.peoplePresent ?? '')) onUpdate(note.id, { peoplePresent: peoplePresent || undefined })
     if (preparation !== (note.preparation ?? '')) onUpdate(note.id, { preparation: preparation || undefined })
+    if (cleanedNotes !== (note.cleanedNotes ?? '')) onUpdate(note.id, { cleanedNotes: cleanedNotes || undefined })
     if (
       JSON.stringify(linkedTaskIds) !== JSON.stringify(note.linkedTaskIds) ||
       JSON.stringify(linkedBucketIds) !== JSON.stringify(note.linkedBucketIds ?? [])
     ) {
       onUpdate(note.id, { linkedTaskIds, linkedBucketIds })
+    }
+  }
+
+  const handleCleanup = async () => {
+    if (!htmlToPlainText(content).trim()) return
+    setCleanupLoading(true)
+    setCleanupError(null)
+    try {
+      const result = await cleanMeetingNotes(
+        {
+          title,
+          content: htmlToPlainText(content),
+          peoplePresent: peoplePresent || undefined,
+          preparation: htmlToPlainText(preparation) || undefined,
+        },
+        getModelConfig(),
+      )
+      const html = markdownToHtml(result)
+      setCleanedNotes(html)
+      onUpdate(note.id, { cleanedNotes: html })
+    } catch (e) {
+      setCleanupError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setCleanupLoading(false)
     }
   }
 
@@ -476,8 +507,8 @@ function NoteEditor({
   }
 
   return (
-    <div className="flex h-full flex-col overflow-auto p-4">
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="flex h-full min-h-0 flex-col overflow-auto p-4">
+      <div className="mb-4 flex shrink-0 items-start justify-between gap-4">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -515,13 +546,13 @@ function NoteEditor({
         </AlertDialog>
       </div>
 
-      <div className="mb-4 flex gap-4 text-xs text-muted-foreground">
+      <div className="mb-4 flex shrink-0 gap-4 text-xs text-muted-foreground">
         <span>Created: {new Date(note.createdAt).toLocaleString()}</span>
         <span>Last edited: {new Date(note.updatedAt).toLocaleString()}</span>
       </div>
 
       {/* Linked tasks & buckets */}
-      <div className="mb-4 space-y-2">
+      <div className="mb-4 shrink-0 space-y-2">
         <div className="text-sm font-medium">Linked</div>
         <div className="flex flex-wrap items-center gap-2">
           {linkedTaskIds.map((id) => {
@@ -567,7 +598,7 @@ function NoteEditor({
       </div>
 
       {/* People present */}
-      <div className="mb-4 space-y-2">
+      <div className="mb-4 shrink-0 space-y-2">
         <div className="text-sm font-medium">People present</div>
         <Input
           value={peoplePresent}
@@ -578,30 +609,67 @@ function NoteEditor({
       </div>
 
       {/* Preparation */}
-      <div className="mb-4 space-y-2">
+      <div className="mb-4 shrink-0 space-y-2">
         <div className="text-sm font-medium">Meeting preparation</div>
-        <Textarea
+        <RichTextEditor
+          key={`${note.id}-preparation`}
           value={preparation}
-          onChange={(e) => setPreparation(e.target.value)}
+          onChange={(html) => setPreparation(html)}
           onBlur={handleBlur}
           placeholder="Agenda, pre-reads, context…"
-          rows={3}
-          className="resize-y"
+          minHeight="120px"
         />
       </div>
 
       {/* Meeting notes */}
-      <div className="flex-1 space-y-2">
-        <div className="text-sm font-medium">Meeting notes</div>
-        <Textarea
+      <div className="space-y-2">
+        <div className="flex shrink-0 items-center justify-between gap-2">
+          <div className="text-sm font-medium">Meeting notes</div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            onClick={handleCleanup}
+            disabled={!htmlToPlainText(content).trim() || cleanupLoading}
+            title="Clean up notes with AI (takeaways, next steps, PTAs, timelines)"
+          >
+            <Sparkles className={cn('h-3.5 w-3.5', cleanupLoading && 'animate-pulse')} />
+            {cleanupLoading ? 'Cleaning…' : 'Clean up with AI'}
+          </Button>
+        </div>
+        {cleanupError && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {cleanupError}
+          </div>
+        )}
+        <RichTextEditor
+          key={`${note.id}-content`}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(html) => setContent(html)}
           onBlur={handleBlur}
           placeholder="What was discussed? Decisions, next steps…"
-          rows={12}
-          className="min-h-[200px] resize-y"
+          minHeight="120px"
         />
       </div>
+
+      {/* Cleaned notes (AI output) */}
+      {(cleanedNotes || cleanupLoading) && (
+        <div className="mt-4 space-y-2 border-t pt-4">
+          <div className="shrink-0 text-sm font-medium">Cleaned notes</div>
+          <p className="shrink-0 text-xs text-muted-foreground">
+            Takeaways, next steps, PTAs, and timelines. Edit if the AI made a mistake.
+          </p>
+          <RichTextEditor
+            key={`${note.id}-cleaned`}
+            value={cleanedNotes}
+            onChange={(html) => setCleanedNotes(html)}
+            onBlur={handleBlur}
+            placeholder={cleanupLoading ? 'Cleaning…' : 'Run "Clean up with AI" to generate'}
+            minHeight="120px"
+            disabled={cleanupLoading}
+          />
+        </div>
+      )}
     </div>
   )
 }

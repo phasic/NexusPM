@@ -1,6 +1,7 @@
 import { parseISO } from 'date-fns'
 
 import type { Bucket, MeetingNote, Notebook, Project, Task } from '@/domain/types'
+import { htmlToPlainText } from '@/lib/richTextUtils'
 
 export type ProjectContext = {
   project: Project
@@ -138,17 +139,22 @@ export function buildProjectContextText(ctx: ProjectContext): string {
       lines.push(`- **When:** ${meetingDate} at ${meetingTime}`)
       if (notebookName) lines.push(`- **Notebook:** ${notebookName}`)
       if (n.peoplePresent) lines.push(`- **People present:** ${n.peoplePresent}`)
-      if (n.preparation) lines.push(`- **Preparation:** ${n.preparation}`)
-      if (linkedTaskTitles.length > 0) {
-        lines.push(`- **Linked tasks:** ${linkedTasks}`)
-      }
-      if (linkedBucketNames.length > 0) {
-        lines.push(`- **Linked buckets:** ${linkedBucketNames.join(', ')}`)
+      if (linkedTaskTitles.length > 0) lines.push(`- **Linked tasks:** ${linkedTasks}`)
+      if (linkedBucketNames.length > 0) lines.push(`- **Linked buckets:** ${linkedBucketNames.join(', ')}`)
+      if (n.preparation) {
+        lines.push('')
+        lines.push('**Preparation:**')
+        lines.push(htmlToPlainText(n.preparation))
       }
       if (n.content) {
         lines.push('')
-        lines.push('**Notes:**')
-        lines.push(n.content)
+        lines.push('**Meeting notes:**')
+        lines.push(htmlToPlainText(n.content))
+      }
+      if (n.cleanedNotes) {
+        lines.push('')
+        lines.push('**Cleaned notes (takeaways, next steps, PTAs, timelines):**')
+        lines.push(htmlToPlainText(n.cleanedNotes))
       }
       lines.push('')
     }

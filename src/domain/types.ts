@@ -67,6 +67,8 @@ export type MeetingNote = {
   peoplePresent?: string
   /** Meeting preparation notes */
   preparation?: string
+  /** AI-cleaned notes: takeaways, next steps, PTAs, timelines */
+  cleanedNotes?: string
 }
 
 export type AppData = {

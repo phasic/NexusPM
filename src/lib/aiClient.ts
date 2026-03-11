@@ -95,3 +95,56 @@ export async function chatCompletion(
   const content = data.choices?.[0]?.message?.content ?? ''
   return content.trim()
 }
+
+export type CleanMeetingNotesInput = {
+  title: string
+  content: string
+  peoplePresent?: string
+  preparation?: string
+}
+
+/**
+ * Clean up raw meeting notes into structured takeaways, next steps, PTAs, and timelines.
+ */
+export async function cleanMeetingNotes(
+  input: CleanMeetingNotesInput,
+  config?: Partial<AIModelConfig>,
+): Promise<string> {
+  const systemPrompt = `You are a meeting notes assistant. Clean up raw meeting notes into a structured, actionable format.
+
+Output format (use markdown headers and lists):
+
+## Takeaways
+- Key decisions and conclusions from the meeting
+
+## Next steps (with PTA and timeline)
+For each action, include subject, PTA, and timeline. If no date is mentioned, use TBD:
+- Next step: [action item]
+  PTA: @[person]
+  Timeline: [date or TBD]
+
+Example:
+- Next step: Finalize the design mockups
+  PTA: @Sarah
+  Timeline: March 15
+- Next step: Review API documentation
+  PTA: @Yoran
+  Timeline: TBD
+
+Keep the same tone and level of detail. If information is missing (e.g. no people named, no dates), say so briefly. Output only the cleaned notes, no preamble.`
+
+  const parts: string[] = []
+  if (input.peoplePresent) parts.push(`People present: ${input.peoplePresent}`)
+  if (input.preparation) parts.push(`Preparation/context: ${input.preparation}`)
+  parts.push(`\nRaw meeting notes:\n${input.content}`)
+
+  const userContent = parts.join('\n\n')
+  const result = await chatCompletion(
+    [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userContent },
+    ],
+    config,
+  )
+  return result
+}

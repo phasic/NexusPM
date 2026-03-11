@@ -80,4 +80,20 @@
       'rlig' 1,
       'calt' 1;
   }
+
+  /* TipTap / ProseMirror editor styles */
+  .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    @apply text-muted-foreground float-left h-0 pointer-events-none;
+  }
+  .ProseMirror table {
+    @apply border-collapse w-full;
+  }
+  .ProseMirror th,
+  .ProseMirror td {
+    @apply border border-border px-3 py-2 text-left;
+  }
+  .ProseMirror th {
+    @apply bg-muted/50 font-semibold;
+  }
 }
