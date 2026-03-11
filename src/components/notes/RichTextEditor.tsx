@@ -41,7 +41,7 @@ function Toolbar({ editor }: { editor: Editor | null }) {
   if (!editor) return null
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/30 px-2 py-1">
+    <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/30 px-2 py-0.5">
       <Button
         type="button"
         variant="ghost"
@@ -166,7 +166,7 @@ export function RichTextEditor({
     editable: !disabled,
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none min-w-0 focus:outline-none px-3 py-2',
+        class: 'prose prose-sm dark:prose-invert max-w-none min-w-0 focus:outline-none px-2 py-1.5',
       },
       handleDOMEvents: {
         blur: () => onBlur?.(),

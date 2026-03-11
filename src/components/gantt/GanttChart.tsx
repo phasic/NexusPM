@@ -656,7 +656,7 @@ export function GanttChart({
         >
           <div className="flex flex-col" style={{ minWidth: 260 + totalWidth }}>
             <div className="sticky top-0 z-30 flex shrink-0 bg-background">
-              <div className="sticky left-0 z-20 flex w-[260px] shrink-0 items-center border-r bg-background px-4 text-xs font-medium text-muted-foreground">
+              <div className="sticky left-0 z-20 flex w-[260px] shrink-0 items-center border-r bg-background px-3 text-xs font-medium text-muted-foreground">
                 Tasks
               </div>
               <div className="flex min-w-0 flex-1 flex-col shrink-0" style={{ width: totalWidth }}>
@@ -828,7 +828,7 @@ export function GanttChart({
                       role="button"
                       tabIndex={0}
                       className={cn(
-                        'flex h-9 cursor-pointer items-center gap-2 border-b px-4 text-sm hover:bg-muted/50',
+                        'flex h-9 cursor-pointer items-center gap-2 border-b px-3 text-sm hover:bg-muted/50',
                         reorderMode ? 'pl-6' : 'pl-3',
                         isDropTarget && 'bg-muted/30',
                         isDragging && 'opacity-40',

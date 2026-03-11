@@ -590,7 +590,7 @@ export function TaskDetailsDialog({
 
   if (variant === 'panel') {
     return (
-      <div className="space-y-4 rounded-xl border bg-background p-4">
+      <div className="space-y-3 rounded-xl border bg-background p-3">
         <div>
           <h3 className="text-base font-semibold">{headerTitle}</h3>
           <p className="text-sm text-muted-foreground">

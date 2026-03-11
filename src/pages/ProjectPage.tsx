@@ -130,10 +130,10 @@ export function ProjectPage() {
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-6">
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <div className="text-2xl font-semibold tracking-tight">{project.name}</div>
+          <div className="text-xl font-semibold tracking-tight">{project.name}</div>
           <div className="text-sm text-muted-foreground">{project.description}</div>
         </div>
         <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ export function ProjectPage() {
         </TabsList>
 
         <TabsContent value="timeline">
-          <div className="space-y-4">
+          <div className="space-y-3">
                 <GanttChart
                     projectId={projectId}
                     uncategorizedOrder={project.uncategorizedOrder}
@@ -186,7 +186,7 @@ export function ProjectPage() {
                   />
 
                   {(createDialogOpen || selectedTask !== null || selectedBucket !== null) && (
-                    <div className="mt-4 border-t pt-4">
+                    <div className="mt-3 border-t pt-3">
                       {createDialogOpen || selectedTask !== null ? (
                         <TaskDetailsDialog
                           task={selectedTask}
@@ -326,7 +326,7 @@ function AddBucketDialog({
             Create a group to organize tasks on the timeline.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="space-y-2">
             <label className="text-sm font-medium">Name</label>
             <Input

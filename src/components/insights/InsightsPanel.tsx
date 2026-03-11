@@ -184,11 +184,11 @@ export function InsightsPanel({
     const flushGroup = () => {
       if (currentGroup && groupItems.length > 0) {
         items.push(
-          <div key={key++} className="mt-3 first:mt-0">
+          <div key={key++} className="mt-2 first:mt-0">
             <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
               {currentGroup}
             </div>
-            <ul className="mt-1.5 space-y-1.5 border-l-2 border-muted-foreground/20 pl-4">
+            <ul className="mt-1 space-y-1 border-l-2 border-muted-foreground/20 pl-3">
               {groupItems.map((item, i) => (
                 <li key={i} className="text-sm leading-relaxed text-muted-foreground">
                   {renderTextWithLinks(item)}
@@ -261,7 +261,7 @@ export function InsightsPanel({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5" />
             AI Insights
@@ -312,12 +312,12 @@ export function InsightsPanel({
       </CardHeader>
       <CardContent>
         {error && (
-          <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <div className="mb-3 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </div>
         )}
         {insights ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {insightSections.length > 0 && (
               <div className="flex justify-end">
                 <Button
@@ -362,7 +362,7 @@ export function InsightsPanel({
                         return next
                       })
                     }}
-                    className="flex w-full items-start gap-3 p-4 text-left transition-colors hover:opacity-90"
+                    className="flex w-full items-start gap-2 p-3 text-left transition-colors hover:opacity-90"
                   >
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center pt-0.5 text-muted-foreground">
                       {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -382,7 +382,7 @@ export function InsightsPanel({
                     </div>
                   </button>
                   {isExpanded && (
-                    <div className="space-y-2 border-t border-black/5 px-4 pb-4 pt-3 dark:border-white/5">
+                    <div className="space-y-2 border-t border-black/5 px-3 pb-3 pt-2 dark:border-white/5">
                       {renderSectionContent(section.content)}
                     </div>
                   )}
@@ -391,7 +391,7 @@ export function InsightsPanel({
             })}
           </div>
         ) : !loading && !error ? (
-          <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
             Click <strong>Analyze</strong> to run AI analysis on this project.
           </div>
         ) : null}
@@ -406,7 +406,7 @@ export function InsightsPanel({
               OpenAI-compatible API.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">Base URL</label>
               <Input

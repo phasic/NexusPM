@@ -94,7 +94,7 @@ export function BucketDetailsDialog({
   }
 
   const content = (
-    <div className="space-y-4">
+    <div className="space-y-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">Name</label>
               <Input
@@ -208,85 +208,84 @@ export function BucketDetailsDialog({
               </div>
             )}
 
-            {!isUncategorized && (
-              <div className="border-t pt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => setDeleteConfirmOpen(true)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete bucket
-                </Button>
-              </div>
-            )}
     </div>
   )
 
   const footer = (
-    <div className={cn('flex justify-end gap-2', variant === 'panel' && 'border-t pt-4')}>
-      <Button variant="secondary" onClick={() => onOpenChange(false)}>
-        Close
-      </Button>
-      {!isUncategorized && (
-        <Button
-          onClick={handleSave}
-          disabled={
-            !name.trim() ||
-            (name.trim() === bucket.name &&
-              description.trim() === (bucket.description ?? '') &&
-              owner.trim() === (bucket.owner ?? ''))
-          }
-        >
-          Save
+    <div className={cn('flex items-center justify-between gap-2', variant === 'panel' && 'border-t pt-4')}>
+      <div>
+        {!isUncategorized && (
+          <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete bucket
+            </Button>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete bucket</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {bucketTasks.length > 0 ? (
+                    <>
+                      Delete &quot;{bucket.name}&quot;? This bucket has {bucketTasks.length} task(s). Do
+                      you want to delete all tasks or just unassign them?
+                    </>
+                  ) : (
+                    <>Delete &quot;{bucket.name}&quot;? This cannot be undone.</>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                {bucketTasks.length > 0 ? (
+                  <>
+                    <Button variant="outline" onClick={() => handleDelete(false)}>
+                      Unassign tasks
+                    </Button>
+                    <Button variant="destructive" onClick={() => handleDelete(true)}>
+                      Delete bucket and all tasks
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="destructive" onClick={() => handleDelete(false)}>
+                    Delete
+                  </Button>
+                )}
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          Close
         </Button>
-      )}
+        {!isUncategorized && (
+          <Button
+            onClick={handleSave}
+            disabled={
+              !name.trim() ||
+              (name.trim() === bucket.name &&
+                description.trim() === (bucket.description ?? '') &&
+                owner.trim() === (bucket.owner ?? ''))
+            }
+          >
+            Save
+          </Button>
+        )}
+      </div>
     </div>
-  )
-
-  const alertDialog = (
-    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete bucket</AlertDialogTitle>
-            <AlertDialogDescription>
-              {bucketTasks.length > 0 ? (
-                <>
-                  Delete &quot;{bucket.name}&quot;? This bucket has {bucketTasks.length} task(s). Do
-                  you want to delete all tasks or just unassign them?
-                </>
-              ) : (
-                <>Delete &quot;{bucket.name}&quot;? This cannot be undone.</>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            {bucketTasks.length > 0 ? (
-              <>
-                <Button variant="outline" onClick={() => handleDelete(false)}>
-                  Unassign tasks
-                </Button>
-                <Button variant="destructive" onClick={() => handleDelete(true)}>
-                  Delete bucket and all tasks
-                </Button>
-              </>
-            ) : (
-              <Button variant="destructive" onClick={() => handleDelete(false)}>
-                Delete bucket
-              </Button>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
   )
 
   if (variant === 'panel') {
     return (
       <>
-        <div className="space-y-4 rounded-xl border bg-background p-4">
+        <div className="space-y-3 rounded-xl border bg-background p-3">
           <div>
             <h3 className="text-base font-semibold">Bucket details</h3>
             <p className="text-sm text-muted-foreground">
@@ -295,10 +294,9 @@ export function BucketDetailsDialog({
                 : 'Edit name, view tasks, or delete this bucket.'}
             </p>
           </div>
-          {content}
-          {footer}
+        {content}
+        {footer}
         </div>
-        {alertDialog}
       </>
     )
   }
@@ -329,7 +327,6 @@ export function BucketDetailsDialog({
           {footer}
         </DialogContent>
       </Dialog>
-      {alertDialog}
     </>
   )
 }

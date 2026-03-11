@@ -202,7 +202,7 @@ export function MeetingNotesPanel({
     : null
 
   return (
-    <div className="flex min-h-[calc(100dvh-11rem)] overflow-hidden rounded-xl border bg-background">
+    <div className="flex min-h-[calc(100dvh-10rem)] overflow-hidden rounded-xl border bg-background">
       {/* Left sidebar - notebooks */}
       <div
         className={cn(
@@ -225,7 +225,7 @@ export function MeetingNotesPanel({
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between border-b px-3 py-2">
+            <div className="flex items-center justify-between border-b px-2 py-1.5">
               <span className="text-sm font-medium text-muted-foreground">Notebooks</span>
               <div className="flex items-center gap-0.5">
                 <Button
@@ -281,7 +281,7 @@ export function MeetingNotesPanel({
                       setSelectedNoteId(null)
                     }}
                     className={cn(
-                      'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors',
+                      'flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm transition-colors',
                       selectedNotebookIdVal === nb.id
                         ? 'bg-primary/10 text-primary'
                         : 'hover:bg-muted/50',
@@ -317,14 +317,14 @@ export function MeetingNotesPanel({
               <PanelRight className="h-4 w-4" />
             </Button>
             {selectedNotebook && (
-              <span className="mt-4 text-[10px] text-muted-foreground -rotate-90 whitespace-nowrap">
+              <span className="mt-2 text-[10px] text-muted-foreground -rotate-90 whitespace-nowrap">
                 {selectedNotebook.name}
               </span>
             )}
           </div>
         ) : selectedNotebook ? (
           <>
-            <div className="flex items-center justify-between border-b px-3 py-2">
+            <div className="flex items-center justify-between border-b px-2 py-1.5">
               <span className="min-w-0 truncate font-medium">{selectedNotebook.name}</span>
               <div className="flex shrink-0 items-center gap-0.5">
                 <Button
@@ -360,7 +360,7 @@ export function MeetingNotesPanel({
                     type="button"
                     onClick={() => setSelectedNoteId(n.id)}
                     className={cn(
-                      'flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm transition-colors',
+                      'flex w-full flex-col gap-0.5 px-2 py-1.5 text-left text-sm transition-colors',
                       selectedNoteIdVal === n.id ? 'bg-primary/10' : 'hover:bg-muted/50',
                     )}
                   >
@@ -507,8 +507,8 @@ function NoteEditor({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-auto p-4">
-      <div className="mb-4 flex shrink-0 items-start justify-between gap-4">
+    <div className="flex h-full min-h-0 flex-col overflow-auto p-3">
+      <div className="mb-3 flex shrink-0 items-start justify-between gap-4">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -546,13 +546,13 @@ function NoteEditor({
         </AlertDialog>
       </div>
 
-      <div className="mb-4 flex shrink-0 gap-4 text-xs text-muted-foreground">
+      <div className="mb-3 flex shrink-0 gap-3 text-xs text-muted-foreground">
         <span>Created: {new Date(note.createdAt).toLocaleString()}</span>
         <span>Last edited: {new Date(note.updatedAt).toLocaleString()}</span>
       </div>
 
       {/* Linked tasks & buckets */}
-      <div className="mb-4 shrink-0 space-y-2">
+      <div className="mb-3 shrink-0 space-y-2">
         <div className="text-sm font-medium">Linked</div>
         <div className="flex flex-wrap items-center gap-2">
           {linkedTaskIds.map((id) => {
@@ -598,7 +598,7 @@ function NoteEditor({
       </div>
 
       {/* People present */}
-      <div className="mb-4 shrink-0 space-y-2">
+      <div className="mb-3 shrink-0 space-y-2">
         <div className="text-sm font-medium">People present</div>
         <Input
           value={peoplePresent}
@@ -609,7 +609,7 @@ function NoteEditor({
       </div>
 
       {/* Preparation */}
-      <div className="mb-4 shrink-0 space-y-2">
+      <div className="mb-3 shrink-0 space-y-2">
         <div className="text-sm font-medium">Meeting preparation</div>
         <RichTextEditor
           key={`${note.id}-preparation`}
@@ -654,7 +654,7 @@ function NoteEditor({
 
       {/* Cleaned notes (AI output) */}
       {(cleanedNotes || cleanupLoading) && (
-        <div className="mt-4 space-y-2 border-t pt-4">
+        <div className="mt-3 space-y-2 border-t pt-3">
           <div className="shrink-0 text-sm font-medium">Cleaned notes</div>
           <p className="shrink-0 text-xs text-muted-foreground">
             Takeaways, next steps, PTAs, and timelines. Edit if the AI made a mistake.

@@ -54,7 +54,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-10">
-      <div className="flex items-end justify-between gap-6">
+      <div className="flex items-end justify-between gap-3">
         <div className="space-y-1">
           <div className="text-2xl font-semibold tracking-tight">Projects</div>
           <div className="text-sm text-muted-foreground">
@@ -66,7 +66,7 @@ export function DashboardPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Active projects</CardTitle>
@@ -108,7 +108,7 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-3">
           <div className="text-sm font-medium text-muted-foreground">All projects</div>
           <div className="space-y-3">
@@ -118,7 +118,7 @@ export function DashboardPage() {
               return (
                 <Card key={p.id} className="transition-colors hover:bg-accent/40">
                   <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
                         <CardTitle className="text-[15px]">{p.name}</CardTitle>
                         <CardDescription className="line-clamp-2">
@@ -177,7 +177,7 @@ export function DashboardPage() {
                   {blockedTasks.slice(0, 8).map(({ project, task }) => (
                     <div
                       key={task.id}
-                      className="flex items-center justify-between gap-4 rounded-lg border bg-background px-3 py-2"
+                      className="flex items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2"
                     >
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium">{task.title}</div>
